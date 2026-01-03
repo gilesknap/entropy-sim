@@ -8,6 +8,7 @@
 
 from ._version import __version__
 from .models import LED, Battery, Circuit, Point, Wire
+from .object_type import ObjectType
 from .viewmodel import CircuitViewModel
 from .wire_manager import WireManager
 
@@ -17,6 +18,7 @@ __all__ = [
     "Circuit",
     "CircuitViewModel",
     "LED",
+    "ObjectType",
     "Point",
     "Wire",
     "WireManager",

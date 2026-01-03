@@ -1,29 +1,11 @@
 """Pydantic models for circuit simulation objects."""
 
-from enum import Enum
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Discriminator, Field
 
-
-class ObjectType(str, Enum):
-    """Types of circuit objects."""
-
-    BATTERY = "battery"
-    LIION_CELL = "liion_cell"
-    LED = "led"
-    WIRE = "wire"
-
-    @property
-    def display_name(self) -> str:
-        """Get the human-readable display name for this object type."""
-        return {
-            ObjectType.BATTERY: "Battery",
-            ObjectType.LIION_CELL: "Li-Ion Cell",
-            ObjectType.LED: "LED",
-            ObjectType.WIRE: "Wire",
-        }[self]
+from entropy_sim.object_type import ObjectType
 
 
 class Point(BaseModel):
@@ -56,7 +38,8 @@ class CircuitObject(BaseModel):
     @property
     def display_name(self) -> str:
         """Get the display name for this object type."""
-        return self.object_type.display_name  # type: ignore[attr-defined]
+        # this would fail in the base class which does not have this Literal attribute
+        return self.object_type.value  # type: ignore[attr-defined]
 
     @property
     def connection_points(self) -> list[ConnectionPoint]:
@@ -289,9 +272,7 @@ class Circuit(BaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     name: str = "Untitled Circuit"
-    components: list[
-        Annotated[Battery | LiIonCell | LED, Discriminator("object_type")]
-    ] = Field(default_factory=list)
+    components: list[Component] = Field(default_factory=list)
     wires: list[Wire] = Field(default_factory=list)
 
     @property
