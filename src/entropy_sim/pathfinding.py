@@ -49,7 +49,7 @@ def find_wire_path(
         # based on which creates a more balanced path
 
         mid_x = start.x + dx / 2
-        mid_y = start.y + dy / 2
+        start.y + dy / 2
 
         # Check if a simple L-shape works (no obstacles)
         if not _path_intersects_obstacles(

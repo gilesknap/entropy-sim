@@ -35,7 +35,6 @@ class CircuitObject(BaseModel):
     """Base class for all circuit objects."""
 
     id: UUID = Field(default_factory=uuid4)
-    object_type: ObjectType
     position: Point = Field(default_factory=Point)
     rotation: float = 0.0  # Rotation in degrees
 
@@ -54,9 +53,9 @@ class Battery(CircuitObject):
 
     def model_post_init(self, __context: object) -> None:
         """Update connection point positions relative to battery position."""
-        self._update_connection_positions()
+        self.update_connection_positions()
 
-    def _update_connection_positions(self) -> None:
+    def update_connection_positions(self) -> None:
         """Update connection points based on battery position."""
         # Battery is horizontal, positive on right, negative on left
         self.positive.position = Point(x=self.position.x + 40, y=self.position.y)
@@ -78,9 +77,9 @@ class LED(CircuitObject):
 
     def model_post_init(self, __context: object) -> None:
         """Update connection point positions relative to LED position."""
-        self._update_connection_positions()
+        self.update_connection_positions()
 
-    def _update_connection_positions(self) -> None:
+    def update_connection_positions(self) -> None:
         """Update connection points based on LED position."""
         # LED is vertical, anode on top, cathode on bottom
         self.anode.position = Point(x=self.position.x, y=self.position.y - 30)
@@ -124,14 +123,14 @@ class Circuit(BaseModel):
     def add_battery(self, position: Point | None = None) -> Battery:
         """Add a new battery to the circuit."""
         battery = Battery(position=position or Point())
-        battery._update_connection_positions()
+        battery.update_connection_positions()
         self.batteries.append(battery)
         return battery
 
     def add_led(self, position: Point | None = None, color: str = "red") -> LED:
         """Add a new LED to the circuit."""
         led = LED(position=position or Point(), color=color)
-        led._update_connection_positions()
+        led.update_connection_positions()
         self.leds.append(led)
         return led
 

@@ -23,7 +23,7 @@ def main(args: Sequence[str] | None = None) -> None:
         default=8080,
         help="Port to run the web server on (default: 8080)",
     )
-    parsed_args = parser.parse_args(args)
+    parser.parse_args(args)
 
     # Import and run the canvas application
     from .canvas import run

@@ -110,14 +110,15 @@ class CircuitCanvas:
         svg_b64 = base64.b64encode(svg_data.encode()).decode()
         data_uri = f"data:image/svg+xml;base64,{svg_b64}"
 
-        self.interactive_image = ui.interactive_image(
-            data_uri,
-            on_mouse=self._on_mouse_event,
-            events=["mousedown", "mouseup", "mousemove"],
-            cross=False,
-        ).classes("border border-gray-300")
-        self.interactive_image.style(
-            f"width: {self.CANVAS_WIDTH}px; height: {self.CANVAS_HEIGHT}px;"
+        self.interactive_image = (
+            ui.interactive_image(
+                data_uri,
+                on_mouse=self._on_mouse_event,
+                events=["mousedown", "mouseup", "mousemove"],
+                cross=False,
+            )
+            .classes("border border-gray-300")
+            .style(f"width: {self.CANVAS_WIDTH}px; height: {self.CANVAS_HEIGHT}px;")
         )
 
     def _render_controls(self) -> None:
@@ -139,8 +140,10 @@ class CircuitCanvas:
              style="background-color: #f8f9fa;">
             <!-- Grid pattern -->
             <defs>
-                <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e0e0e0" stroke-width="0.5"/>
+                <pattern id="grid" width="20" height="20"
+                         patternUnits="userSpaceOnUse">
+                    <path d="M 20 0 L 0 0 0 20" fill="none"
+                          stroke="#e0e0e0" stroke-width="0.5"/>
                 </pattern>
             </defs>
             <rect width="100%" height="100%" fill="url(#grid)"/>
@@ -193,7 +196,7 @@ class CircuitCanvas:
     def _render_connection_points_svg(self) -> str:
         """Generate SVG for connection points."""
         svg = ""
-        for _obj_id, conn_point, obj in self.circuit.get_all_connection_points():
+        for _obj_id, conn_point, _obj in self.circuit.get_all_connection_points():
             color = "#22c55e" if conn_point.connected_to else "#3b82f6"
             # Determine if this is positive or negative terminal
             if conn_point.label == "positive":
@@ -212,17 +215,22 @@ class CircuitCanvas:
         if mini:
             return """
             <svg width="80" height="40" viewBox="-40 -20 80 40">
-                <rect x="-35" y="-15" width="70" height="30" rx="3" fill="#fbbf24" stroke="#92400e" stroke-width="2"/>
+                <rect x="-35" y="-15" width="70" height="30" rx="3"
+                      fill="#fbbf24" stroke="#92400e" stroke-width="2"/>
                 <rect x="35" y="-8" width="5" height="16" fill="#92400e"/>
-                <text x="0" y="5" text-anchor="middle" font-size="12" fill="#92400e">+  -</text>
+                <text x="0" y="5" text-anchor="middle" font-size="12"
+                      fill="#92400e">+  -</text>
             </svg>
             """
         return f"""
         <g transform="translate({x}, {y})">
-            <rect x="-35" y="-15" width="70" height="30" rx="3" fill="#fbbf24" stroke="#92400e" stroke-width="2"/>
+            <rect x="-35" y="-15" width="70" height="30" rx="3"
+                  fill="#fbbf24" stroke="#92400e" stroke-width="2"/>
             <rect x="35" y="-8" width="5" height="16" fill="#92400e"/>
-            <text x="-20" y="5" text-anchor="middle" font-size="14" font-weight="bold" fill="#92400e">+</text>
-            <text x="20" y="5" text-anchor="middle" font-size="14" font-weight="bold" fill="#92400e">-</text>
+            <text x="-20" y="5" text-anchor="middle" font-size="14"
+                  font-weight="bold" fill="#92400e">+</text>
+            <text x="20" y="5" text-anchor="middle" font-size="14"
+                  font-weight="bold" fill="#92400e">-</text>
         </g>
         """
 
@@ -241,9 +249,12 @@ class CircuitCanvas:
         if mini:
             return f"""
             <svg width="30" height="60" viewBox="-15 -30 30 60">
-                <polygon points="0,-20 12,10 -12,10" fill="{led_color}" stroke="#333" stroke-width="2"/>
-                <line x1="-12" y1="10" x2="12" y2="10" stroke="#333" stroke-width="3"/>
-                <line x1="0" y1="10" x2="0" y2="25" stroke="#333" stroke-width="2"/>
+                <polygon points="0,-20 12,10 -12,10" fill="{led_color}"
+                         stroke="#333" stroke-width="2"/>
+                <line x1="-12" y1="10" x2="12" y2="10"
+                      stroke="#333" stroke-width="3"/>
+                <line x1="0" y1="10" x2="0" y2="25"
+                      stroke="#333" stroke-width="2"/>
             </svg>
             """
         return f"""
@@ -257,10 +268,14 @@ class CircuitCanvas:
                     </feMerge>
                 </filter>
             </defs>
-            <polygon points="0,-20 15,15 -15,15" fill="{led_color}" stroke="#333" stroke-width="2" {glow}/>
-            <line x1="-15" y1="15" x2="15" y2="15" stroke="#333" stroke-width="3"/>
-            <line x1="0" y1="-20" x2="0" y2="-30" stroke="#333" stroke-width="2"/>
-            <line x1="0" y1="15" x2="0" y2="30" stroke="#333" stroke-width="2"/>
+            <polygon points="0,-20 15,15 -15,15" fill="{led_color}"
+                     stroke="#333" stroke-width="2" {glow}/>
+            <line x1="-15" y1="15" x2="15" y2="15"
+                  stroke="#333" stroke-width="3"/>
+            <line x1="0" y1="-20" x2="0" y2="-30"
+                  stroke="#333" stroke-width="2"/>
+            <line x1="0" y1="15" x2="0" y2="30"
+                  stroke="#333" stroke-width="2"/>
         </g>
         """
 
@@ -268,7 +283,8 @@ class CircuitCanvas:
         """Generate SVG for wire palette item."""
         return """
         <svg width="80" height="40" viewBox="0 0 80 40">
-            <line x1="10" y1="20" x2="70" y2="20" stroke="#333" stroke-width="3" stroke-linecap="round"/>
+            <line x1="10" y1="20" x2="70" y2="20" stroke="#333"
+                  stroke-width="3" stroke-linecap="round"/>
             <circle cx="10" cy="20" r="5" fill="#3b82f6"/>
             <circle cx="70" cy="20" r="5" fill="#3b82f6"/>
         </svg>
@@ -288,7 +304,8 @@ class CircuitCanvas:
     def _on_palette_click(self, item: str) -> None:
         """Handle palette item selection."""
         self.selected_palette_item = item
-        self.selection_label.set_text(item.capitalize())
+        if self.selection_label:
+            self.selection_label.set_text(item.capitalize())
         ui.notify(f"Selected: {item}. Click on canvas to place.")
 
     def _on_mouse_event(self, e: MouseEventArguments) -> None:
@@ -326,7 +343,8 @@ class CircuitCanvas:
             ui.notify("LED placed!")
 
         self.selected_palette_item = None
-        self.selection_label.set_text("None")
+        if self.selection_label:
+            self.selection_label.set_text("None")
         self._update_canvas()
 
     def _start_wire(self, pos: Point) -> None:
@@ -398,7 +416,8 @@ class CircuitCanvas:
         self.dragging_wire = None
         self.wire_start_point = None
         self.selected_palette_item = None
-        self.selection_label.set_text("None")
+        if self.selection_label:
+            self.selection_label.set_text("None")
 
     def _check_component_drag(self, pos: Point) -> None:
         """Check if a component should be dragged."""
@@ -435,7 +454,7 @@ class CircuitCanvas:
         for battery in self.circuit.batteries:
             if battery.id == self.dragging_component:
                 battery.position = new_pos
-                battery._update_connection_positions()
+                battery.update_connection_positions()
                 self._update_connected_wires(battery)
                 self._update_canvas()
                 return
@@ -443,7 +462,7 @@ class CircuitCanvas:
         for led in self.circuit.leds:
             if led.id == self.dragging_component:
                 led.position = new_pos
-                led._update_connection_positions()
+                led.update_connection_positions()
                 self._update_connected_wires(led)
                 self._update_canvas()
                 return

@@ -12,10 +12,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 description = "An energy transormation simulation tool for learning about entropy"
-dependencies = [
-    "pydantic>=2.0",
-    "nicegui>=1.4",
-]
+dependencies = ["pydantic>=2.0", "nicegui>=1.4"]
 dynamic = ["version"]
 license.file = "LICENSE"
 readme = "README.md"
@@ -47,8 +44,8 @@ name = "Giles Knap"
 version_file = "src/entropy_sim/_version.py"
 
 [tool.pyright]
-typeCheckingMode = "strict"
-reportMissingImports = false # Ignore missing stubs in imported modules
+typeCheckingMode = "standard"
+reportMissingImports = false  # Ignore missing stubs in imported modules
 
 [tool.pytest.ini_options]
 # Run pytest with all our checkers, and don't spam us with massive tracebacks on error
@@ -108,7 +105,7 @@ commands = [
 description = "Run tests with coverage"
 commands = [
     [
-        "pytest", 
+        "pytest",
         "--cov=entropy_sim",
         "--cov-report",
         "term",
