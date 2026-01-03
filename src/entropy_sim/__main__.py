@@ -10,14 +10,25 @@ __all__ = ["main"]
 
 def main(args: Sequence[str] | None = None) -> None:
     """Argument parser for the CLI."""
-    parser = ArgumentParser()
+    parser = ArgumentParser(description="Entropy Simulation - Circuit Builder")
     parser.add_argument(
         "-v",
         "--version",
         action="version",
         version=__version__,
     )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8080,
+        help="Port to run the web server on (default: 8080)",
+    )
     parser.parse_args(args)
+
+    # Import and run the canvas application
+    from .views import run
+
+    run()
 
 
 if __name__ == "__main__":
