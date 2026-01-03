@@ -26,7 +26,7 @@ def main(args: Sequence[str] | None = None) -> None:
     parser.parse_args(args)
 
     # Import and run the canvas application
-    from .canvas import run
+    from .views import run
 
     run()
 
