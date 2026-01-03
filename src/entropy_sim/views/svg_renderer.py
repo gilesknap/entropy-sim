@@ -6,15 +6,43 @@ from ..models import Circuit
 class SVGRenderer:
     """Renders circuit components as SVG."""
 
-    def __init__(self, width: int = 1000, height: int = 700) -> None:
+    # Minimum canvas dimensions
+    MIN_WIDTH = 800
+    MIN_HEIGHT = 600
+    # Padding around content
+    CONTENT_PADDING = 200
+
+    def __init__(self, width: int = 800, height: int = 600) -> None:
         """Initialize the renderer with canvas dimensions."""
         self.width = width
         self.height = height
 
+    def calculate_canvas_size(self, circuit: Circuit) -> tuple[int, int]:
+        """Calculate canvas size based on circuit content."""
+        min_x, min_y, max_x, max_y = circuit.get_bounds()
+
+        # If no content, use minimum size
+        if min_x == float("inf"):
+            return (self.MIN_WIDTH, self.MIN_HEIGHT)
+
+        # Calculate required size with padding
+        required_width = int(max_x + self.CONTENT_PADDING)
+        required_height = int(max_y + self.CONTENT_PADDING)
+
+        # Use at least minimum size
+        return (
+            max(self.MIN_WIDTH, required_width),
+            max(self.MIN_HEIGHT, required_height),
+        )
+
     def render_circuit(self, circuit: Circuit) -> str:
         """Generate the complete SVG for the circuit."""
+        width, height = self.calculate_canvas_size(circuit)
+        self.width = width
+        self.height = height
+
         return f"""
-        <svg width="{self.width}" height="{self.height}"
+        <svg width="{width}" height="{height}"
              xmlns="http://www.w3.org/2000/svg"
              style="background-color: #f8f9fa;">
             <!-- Grid pattern -->

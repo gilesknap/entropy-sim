@@ -120,6 +120,44 @@ class Circuit(BaseModel):
     leds: list[LED] = Field(default_factory=list)
     wires: list[Wire] = Field(default_factory=list)
 
+    def get_bounds(self) -> tuple[float, float, float, float]:
+        """Get bounding box of all components (min_x, min_y, max_x, max_y)."""
+        if not self.batteries and not self.leds and not self.wires:
+            return (0, 0, 0, 0)
+
+        min_x = float("inf")
+        min_y = float("inf")
+        max_x = float("-inf")
+        max_y = float("-inf")
+
+        for battery in self.batteries:
+            # Battery dimensions: 80x40 centered on position
+            min_x = min(min_x, battery.position.x - 40)
+            max_x = max(max_x, battery.position.x + 40)
+            min_y = min(min_y, battery.position.y - 20)
+            max_y = max(max_y, battery.position.y + 20)
+
+        for led in self.leds:
+            # LED dimensions: 30x60 centered on position
+            min_x = min(min_x, led.position.x - 15)
+            max_x = max(max_x, led.position.x + 15)
+            min_y = min(min_y, led.position.y - 30)
+            max_y = max(max_y, led.position.y + 30)
+
+        for wire in self.wires:
+            for point in wire.path:
+                min_x = min(min_x, point.x)
+                max_x = max(max_x, point.x)
+                min_y = min(min_y, point.y)
+                max_y = max(max_y, point.y)
+            # Also check start/end positions
+            min_x = min(min_x, wire.start.position.x, wire.end.position.x)
+            max_x = max(max_x, wire.start.position.x, wire.end.position.x)
+            min_y = min(min_y, wire.start.position.y, wire.end.position.y)
+            max_y = max(max_y, wire.start.position.y, wire.end.position.y)
+
+        return (min_x, min_y, max_x, max_y)
+
     def add_battery(self, position: Point | None = None) -> Battery:
         """Add a new battery to the circuit."""
         battery = Battery(position=position or Point())

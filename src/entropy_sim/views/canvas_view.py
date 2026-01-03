@@ -15,30 +15,33 @@ from .svg_renderer import SVGRenderer
 class CircuitCanvasView:
     """Main view composing the circuit canvas, palette, and controls."""
 
-    CANVAS_WIDTH = 1000
-    CANVAS_HEIGHT = 700
     PALETTE_WIDTH = 150
 
     def __init__(self) -> None:
         """Initialize the canvas view."""
         self.viewmodel = CircuitViewModel()
-        self.renderer = SVGRenderer(self.CANVAS_WIDTH, self.CANVAS_HEIGHT)
+        self.renderer = SVGRenderer()
         self.palette = PaletteView(self.viewmodel, self.renderer, self.PALETTE_WIDTH)
         self.controls = ControlsView(self.viewmodel)
 
         self.interactive_image: ui.interactive_image | None = None
+        self.canvas_container: ui.element | None = None
 
         # Register for viewmodel changes
         self.viewmodel.add_change_listener(self._on_circuit_change)
 
     def render(self) -> None:
         """Render the complete circuit canvas UI."""
-        with ui.column().classes("w-full items-center"):
+        with ui.column().classes("w-full h-screen p-4").style("overflow: hidden;"):
             ui.label("Entropy Simulation - Circuit Builder").classes(
-                "text-2xl font-bold mb-4"
+                "text-2xl font-bold mb-4 flex-shrink-0"
             )
 
-            with ui.row().classes("gap-4"):
+            with (
+                ui.row()
+                .classes("gap-4 flex-1 w-full")
+                .style("min-height: 0; overflow: hidden;")
+            ):
                 self._render_canvas()
                 self.palette.render()
 
@@ -50,16 +53,32 @@ class CircuitCanvasView:
         svg_b64 = base64.b64encode(svg_data.encode()).decode()
         data_uri = f"data:image/svg+xml;base64,{svg_b64}"
 
-        self.interactive_image = (
-            ui.interactive_image(
-                data_uri,
-                on_mouse=self._on_mouse_event,
-                events=["mousedown", "mouseup", "mousemove"],
-                cross=False,
+        # Get current canvas dimensions from renderer
+        canvas_width = self.renderer.width
+        canvas_height = self.renderer.height
+
+        with (
+            ui.element("div")
+            .classes("flex-1")
+            .style(
+                "min-width: 0; min-height: 0; overflow: auto; "
+                "width: 100%; height: 100%;"
             )
-            .classes("border border-gray-300")
-            .style(f"width: {self.CANVAS_WIDTH}px; height: {self.CANVAS_HEIGHT}px;")
-        )
+        ) as container:
+            self.canvas_container = container
+            self.interactive_image = (
+                ui.interactive_image(
+                    data_uri,
+                    on_mouse=self._on_mouse_event,
+                    events=["mousedown", "mouseup", "mousemove"],
+                    cross=False,
+                )
+                .classes("border border-gray-300")
+                .style(
+                    f"width: {canvas_width}px; height: {canvas_height}px; "
+                    "min-width: unset; min-height: unset;"
+                )
+            )
 
     def _on_mouse_event(self, e: MouseEventArguments) -> None:
         """Handle mouse events on canvas."""
@@ -103,9 +122,17 @@ class CircuitCanvasView:
         self._update_canvas()
 
     def _update_canvas(self) -> None:
-        """Update the canvas SVG."""
+        """Update the canvas SVG and resize if needed."""
         if self.interactive_image:
             svg_data = self.renderer.render_circuit(self.viewmodel.circuit)
             svg_b64 = base64.b64encode(svg_data.encode()).decode()
             data_uri = f"data:image/svg+xml;base64,{svg_b64}"
             self.interactive_image.set_source(data_uri)
+
+            # Update canvas size to match new SVG dimensions
+            canvas_width = self.renderer.width
+            canvas_height = self.renderer.height
+            self.interactive_image.style(
+                f"width: {canvas_width}px; height: {canvas_height}px; "
+                "min-width: unset; min-height: unset;"
+            )

@@ -21,7 +21,14 @@ class PaletteView:
 
     def render(self) -> None:
         """Render the palette UI."""
-        with ui.card().classes("p-4").style(f"width: {self.width}px"):
+        with (
+            ui.card()
+            .classes("p-4")
+            .style(
+                f"width: {self.width}px; flex: 0 0 {self.width}px; "
+                "display: flex; flex-direction: column; height: 100%;"
+            )
+        ):
             ui.label("Components").classes("text-lg font-bold mb-2")
 
             self._render_battery_item()
