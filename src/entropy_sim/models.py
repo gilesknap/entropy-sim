@@ -1,10 +1,10 @@
 """Pydantic models for circuit simulation objects."""
 
 from enum import Enum
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Discriminator, Field
 
 
 class ObjectType(str, Enum):
@@ -43,6 +43,11 @@ class CircuitObject(BaseModel):
     size_x: float = 0.0  # Half-width (extends left and right from position)
     size_y: float = 0.0  # Half-height (extends up and down from position)
 
+    @property
+    def type_name(self) -> str:
+        """Get the display name for this object type."""
+        return "Object"
+
     def get_bounds(self) -> tuple[float, float, float, float]:
         """Get bounding box (min_x, min_y, max_x, max_y)."""
         return (
@@ -78,6 +83,11 @@ class Battery(CircuitObject):
     negative: ConnectionPoint = Field(
         default_factory=lambda: ConnectionPoint(label="negative")
     )
+
+    @property
+    def type_name(self) -> str:
+        """Get the display name for this object type."""
+        return "Battery"
 
     def model_post_init(self, __context: object) -> None:
         """Update connection point positions relative to battery position."""
@@ -130,6 +140,11 @@ class LiIonCell(CircuitObject):
         default_factory=lambda: ConnectionPoint(label="negative")
     )
 
+    @property
+    def type_name(self) -> str:
+        """Get the display name for this object type."""
+        return "Li-Ion Cell"
+
     def model_post_init(self, __context: object) -> None:
         """Update connection point positions relative to cell position."""
         self.update_connection_positions()
@@ -181,6 +196,11 @@ class LED(CircuitObject):
     cathode: ConnectionPoint = Field(
         default_factory=lambda: ConnectionPoint(label="negative")
     )
+
+    @property
+    def type_name(self) -> str:
+        """Get the display name for this object type."""
+        return "LED"
 
     def model_post_init(self, __context: object) -> None:
         """Update connection point positions relative to LED position."""
@@ -235,6 +255,11 @@ class Wire(CircuitObject):
     start_connected_to: UUID | None = None
     end_connected_to: UUID | None = None
 
+    @property
+    def type_name(self) -> str:
+        """Get the display name for this object type."""
+        return "Wire"
+
     def get_bounds(self) -> tuple[float, float, float, float]:
         """Get bounding box including all path points."""
         all_x = [self.start.position.x, self.end.position.x] + [p.x for p in self.path]
@@ -242,8 +267,11 @@ class Wire(CircuitObject):
         return (min(all_x), min(all_y), max(all_x), max(all_y))
 
 
-# Type alias for any component
-Component = Battery | LiIonCell | LED | Wire
+# Type alias for any component with discriminated union
+Component = Annotated[
+    Battery | LiIonCell | LED | Wire,
+    Discriminator("object_type"),
+]
 
 
 class Circuit(BaseModel):
@@ -251,21 +279,15 @@ class Circuit(BaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     name: str = "Untitled Circuit"
-    batteries: list[Battery] = Field(default_factory=list)
-    liion_cells: list[LiIonCell] = Field(default_factory=list)
-    leds: list[LED] = Field(default_factory=list)
+    components: list[
+        Annotated[Battery | LiIonCell | LED, Discriminator("object_type")]
+    ] = Field(default_factory=list)
     wires: list[Wire] = Field(default_factory=list)
-    components: list[CircuitObject] = Field(default_factory=list)
-
-    def model_post_init(self, __context: object) -> None:
-        """Sync components list after deserialization."""
-        # Rebuild components list from separate type lists
-        self.components = [*self.batteries, *self.liion_cells, *self.leds]
 
     @property
     def all_objects(self) -> list[CircuitObject]:
         """Get all circuit objects as a single list."""
-        return [*self.batteries, *self.liion_cells, *self.leds, *self.wires]
+        return [*self.components, *self.wires]
 
     def get_bounds(self) -> tuple[float, float, float, float]:
         """Get bounding box of all components (min_x, min_y, max_x, max_y)."""
@@ -290,7 +312,6 @@ class Circuit(BaseModel):
         """Add a new battery to the circuit."""
         battery = Battery(position=position or Point())
         battery.update_connection_positions()
-        self.batteries.append(battery)
         self.components.append(battery)
         return battery
 
@@ -298,7 +319,6 @@ class Circuit(BaseModel):
         """Add a new Li-Ion cell to the circuit."""
         cell = LiIonCell(position=position or Point())
         cell.update_connection_positions()
-        self.liion_cells.append(cell)
         self.components.append(cell)
         return cell
 
@@ -306,11 +326,7 @@ class Circuit(BaseModel):
         """Add a new LED to the circuit."""
         led = LED(position=position or Point(), color=color)
         led.update_connection_positions()
-        self.leds.append(led)
         self.components.append(led)
-        return led
-        led.update_connection_positions()
-        self.leds.append(led)
         return led
 
     def add_wire(self) -> Wire:
@@ -324,15 +340,16 @@ class Circuit(BaseModel):
     ) -> list[tuple[UUID, ConnectionPoint, Component]]:
         """Get all connection points in the circuit with their parent objects."""
         points: list[tuple[UUID, ConnectionPoint, Component]] = []
-        for battery in self.batteries:
-            points.append((battery.id, battery.positive, battery))
-            points.append((battery.id, battery.negative, battery))
-        for cell in self.liion_cells:
-            points.append((cell.id, cell.positive, cell))
-            points.append((cell.id, cell.negative, cell))
-        for led in self.leds:
-            points.append((led.id, led.anode, led))
-            points.append((led.id, led.cathode, led))
+        for component in self.components:
+            if isinstance(component, Battery):
+                points.append((component.id, component.positive, component))
+                points.append((component.id, component.negative, component))
+            elif isinstance(component, LiIonCell):
+                points.append((component.id, component.positive, component))
+                points.append((component.id, component.negative, component))
+            elif isinstance(component, LED):
+                points.append((component.id, component.anode, component))
+                points.append((component.id, component.cathode, component))
         return points
 
     def find_nearest_connection_point(
@@ -354,17 +371,9 @@ class Circuit(BaseModel):
 
     def remove_component(self, component_id: UUID) -> bool:
         """Remove a component by ID."""
-        for i, battery in enumerate(self.batteries):
-            if battery.id == component_id:
-                self.batteries.pop(i)
-                return True
-        for i, cell in enumerate(self.liion_cells):
-            if cell.id == component_id:
-                self.liion_cells.pop(i)
-                return True
-        for i, led in enumerate(self.leds):
-            if led.id == component_id:
-                self.leds.pop(i)
+        for i, component in enumerate(self.components):
+            if component.id == component_id:
+                self.components.pop(i)
                 return True
         for i, wire in enumerate(self.wires):
             if wire.id == component_id:

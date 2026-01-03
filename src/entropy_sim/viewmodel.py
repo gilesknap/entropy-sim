@@ -200,16 +200,7 @@ class CircuitViewModel:
         # Check all components
         for component in self.circuit.components:
             if component.contains_point(pos):
-                # Determine type string
-                if isinstance(component, Battery):
-                    obj_type = "battery"
-                elif isinstance(component, LiIonCell):
-                    obj_type = "liion_cell"
-                elif isinstance(component, LED):
-                    obj_type = "led"
-                else:
-                    obj_type = "unknown"
-                return (obj_type, component.id, component)
+                return (component.type_name, component.id, component)
 
         # Check wire segments
         for wire in self.circuit.wires:
@@ -254,89 +245,43 @@ class CircuitViewModel:
         """Delete an object by type and ID."""
         self._save_state()
 
-        if obj_type == "battery":
-            self._delete_battery(obj_id)
-        elif obj_type == "liion_cell":
-            self._delete_liion_cell(obj_id)
-        elif obj_type == "led":
-            self._delete_led(obj_id)
-        elif obj_type == "wire":
-            self._delete_wire(obj_id)
+        # Try to find and delete from components
+        component = next((c for c in self.circuit.components if c.id == obj_id), None)
+        if component:
+            # Delete connected wires if component has connections
+            if component.has_connections:
+                # Get all connection point IDs from this component
+                conn_ids = set()
+                if isinstance(component, Battery):
+                    conn_ids = {component.positive.id, component.negative.id}
+                elif isinstance(component, LiIonCell):
+                    conn_ids = {component.positive.id, component.negative.id}
+                elif isinstance(component, LED):
+                    conn_ids = {component.anode.id, component.cathode.id}
 
-        self._notify_change()
+                # Remove wires connected to these points
+                self.circuit.wires = [
+                    w
+                    for w in self.circuit.wires
+                    if w.start_connected_to not in conn_ids
+                    and w.end_connected_to not in conn_ids
+                ]
 
-    def _delete_battery(self, battery_id: UUID) -> None:
-        """Delete a battery and its connected wires."""
-        battery = next((b for b in self.circuit.batteries if b.id == battery_id), None)
-        if not battery:
+            # Delete the component
+            self.circuit.components = [
+                c for c in self.circuit.components if c.id != obj_id
+            ]
+            ui.notify(f"{obj_type.replace('_', ' ').title()} deleted")
+            self._notify_change()
             return
 
-        # Delete connected wires
-        conn_ids = {battery.positive.id, battery.negative.id}
-        self.circuit.wires = [
-            w
-            for w in self.circuit.wires
-            if w.start_connected_to not in conn_ids
-            and w.end_connected_to not in conn_ids
-        ]
-
-        # Delete the battery
-        self.circuit.batteries = [
-            b for b in self.circuit.batteries if b.id != battery_id
-        ]
-        self.circuit.components = [
-            c for c in self.circuit.components if c.id != battery_id
-        ]
-        ui.notify("Battery deleted")
-
-    def _delete_liion_cell(self, cell_id: UUID) -> None:
-        """Delete a Li-Ion cell and its connected wires."""
-        cell = next((c for c in self.circuit.liion_cells if c.id == cell_id), None)
-        if not cell:
+        # Try to find and delete from wires
+        wire = next((w for w in self.circuit.wires if w.id == obj_id), None)
+        if wire:
+            self.circuit.wires = [w for w in self.circuit.wires if w.id != obj_id]
+            ui.notify("Wire deleted")
+            self._notify_change()
             return
-
-        # Delete connected wires
-        conn_ids = {cell.positive.id, cell.negative.id}
-        self.circuit.wires = [
-            w
-            for w in self.circuit.wires
-            if w.start_connected_to not in conn_ids
-            and w.end_connected_to not in conn_ids
-        ]
-
-        # Delete the Li-Ion cell
-        self.circuit.liion_cells = [
-            c for c in self.circuit.liion_cells if c.id != cell_id
-        ]
-        self.circuit.components = [
-            c for c in self.circuit.components if c.id != cell_id
-        ]
-        ui.notify("Li-Ion Cell deleted")
-
-    def _delete_led(self, led_id: UUID) -> None:
-        """Delete an LED and its connected wires."""
-        led = next((item for item in self.circuit.leds if item.id == led_id), None)
-        if not led:
-            return
-
-        # Delete connected wires
-        conn_ids = {led.anode.id, led.cathode.id}
-        self.circuit.wires = [
-            w
-            for w in self.circuit.wires
-            if w.start_connected_to not in conn_ids
-            and w.end_connected_to not in conn_ids
-        ]
-
-        # Delete the LED
-        self.circuit.leds = [item for item in self.circuit.leds if item.id != led_id]
-        self.circuit.components = [c for c in self.circuit.components if c.id != led_id]
-        ui.notify("LED deleted")
-
-    def _delete_wire(self, wire_id: UUID) -> None:
-        """Delete a wire."""
-        self.circuit.wires = [w for w in self.circuit.wires if w.id != wire_id]
-        ui.notify("Wire deleted")
 
     # === Rotation Operations ===
 
@@ -371,9 +316,13 @@ class CircuitViewModel:
     def save_circuit(self) -> str:
         """Save the circuit and return JSON data."""
         json_data = self.circuit.model_dump_json(indent=2)
+        battery_count = sum(
+            1 for c in self.circuit.components if isinstance(c, Battery)
+        )
+        led_count = sum(1 for c in self.circuit.components if isinstance(c, LED))
         ui.notify(
-            f"Circuit saved! ({len(self.circuit.batteries)} batteries, "
-            f"{len(self.circuit.leds)} LEDs, {len(self.circuit.wires)} wires)"
+            f"Circuit saved! ({battery_count} batteries, "
+            f"{led_count} LEDs, {len(self.circuit.wires)} wires)"
         )
         return json_data
 

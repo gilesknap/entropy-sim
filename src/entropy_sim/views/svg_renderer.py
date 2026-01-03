@@ -96,29 +96,42 @@ class SVGRenderer:
 
     def _render_batteries(self, circuit: Circuit) -> str:
         """Generate SVG for all batteries."""
+        from ..models import Battery
+
         svg = ""
-        for battery in circuit.batteries:
-            svg += self.get_battery_svg(
-                battery.position.x, battery.position.y, battery.rotation
-            )
+        for component in circuit.components:
+            if isinstance(component, Battery):
+                svg += self.get_battery_svg(
+                    component.position.x, component.position.y, component.rotation
+                )
         return svg
 
     def _render_liion_cells(self, circuit: Circuit) -> str:
         """Generate SVG for all Li-Ion cells."""
+        from ..models import LiIonCell
+
         svg = ""
-        for cell in circuit.liion_cells:
-            svg += self.get_liion_cell_svg(
-                cell.position.x, cell.position.y, cell.rotation
-            )
+        for component in circuit.components:
+            if isinstance(component, LiIonCell):
+                svg += self.get_liion_cell_svg(
+                    component.position.x, component.position.y, component.rotation
+                )
         return svg
 
     def _render_leds(self, circuit: Circuit) -> str:
         """Generate SVG for all LEDs."""
+        from ..models import LED
+
         svg = ""
-        for led in circuit.leds:
-            svg += self.get_led_svg(
-                led.position.x, led.position.y, led.color, led.is_on, led.rotation
-            )
+        for component in circuit.components:
+            if isinstance(component, LED):
+                svg += self.get_led_svg(
+                    component.position.x,
+                    component.position.y,
+                    component.color,
+                    component.is_on,
+                    component.rotation,
+                )
         return svg
 
     def _render_wires(self, circuit: Circuit) -> str:
