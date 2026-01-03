@@ -145,16 +145,65 @@ class SVGRenderer:
         """Generate SVG for connection points."""
         svg = ""
         for _obj_id, conn_point, _obj in circuit.get_all_connection_points():
-            color = "#22c55e" if conn_point.connected_to else "#3b82f6"
+            # Determine color based on polarity
             if conn_point.label == "positive":
-                color = "#ef4444" if not conn_point.connected_to else "#22c55e"
+                stroke_color = "#ef4444"  # Red for positive
             elif conn_point.label == "negative":
-                color = "#1e40af" if not conn_point.connected_to else "#22c55e"
+                stroke_color = "#000000"  # Black for negative
+            else:
+                stroke_color = "#3b82f6"  # Blue for neutral/wire endpoints
+
+            # Connected: solid fill, Unconnected: hollow (no fill)
+            if conn_point.connected_to:
+                fill = stroke_color
+            else:
+                fill = "none"
 
             svg += f"""
             <circle cx="{conn_point.position.x}" cy="{conn_point.position.y}"
-                    r="6" fill="{color}" stroke="#fff" stroke-width="2"/>
+                    r="6" fill="{fill}" stroke="{stroke_color}" stroke-width="2"/>
             """
+
+        # Also render wire endpoint anchors (start and end)
+        # Create a lookup map for connection point colors
+        conn_point_colors = {}
+        for _obj_id, conn_point, _obj in circuit.get_all_connection_points():
+            if conn_point.label == "positive":
+                conn_point_colors[conn_point.id] = "#ef4444"  # Red
+            elif conn_point.label == "negative":
+                conn_point_colors[conn_point.id] = "#000000"  # Black
+            else:
+                conn_point_colors[conn_point.id] = "#3b82f6"  # Blue
+
+        for wire in circuit.wires:
+            # Start anchor - use color fill with white stroke when connected
+            if wire.start_connected_to is not None:
+                start_color = conn_point_colors.get(wire.start_connected_to, "#3b82f6")
+                start_fill = start_color
+                start_stroke = "#fff"
+            else:
+                start_color = "#3b82f6"
+                start_fill = "none"
+                start_stroke = start_color
+            svg += f"""
+            <circle cx="{wire.start.position.x}" cy="{wire.start.position.y}"
+                    r="6" fill="{start_fill}" stroke="{start_stroke}" stroke-width="2"/>
+            """
+
+            # End anchor - use color fill with white stroke when connected
+            if wire.end_connected_to is not None:
+                end_color = conn_point_colors.get(wire.end_connected_to, "#3b82f6")
+                end_fill = end_color
+                end_stroke = "#fff"
+            else:
+                end_color = "#3b82f6"
+                end_fill = "none"
+                end_stroke = end_color
+            svg += f"""
+            <circle cx="{wire.end.position.x}" cy="{wire.end.position.y}"
+                    r="6" fill="{end_fill}" stroke="{end_stroke}" stroke-width="2"/>
+            """
+
         return svg
 
     def get_battery_svg(

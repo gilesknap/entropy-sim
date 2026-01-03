@@ -72,22 +72,28 @@ class Battery(CircuitObject):
         """Update connection points based on battery position and rotation."""
         import math
 
-        # Battery is horizontal, positive on right, negative on left
+        # 9V Battery has snap terminals protruding from the top
+        # Connection points at the ends of the terminals
+        # Positive terminal at left (-15, -35), Negative at right (15, -35)
         # Apply rotation around the center
         angle = math.radians(self.rotation)
         cos_a = math.cos(angle)
         sin_a = math.sin(angle)
 
-        # Right side (positive terminal) at +40 offset
-        pos_x = 40 * cos_a
-        pos_y = 40 * sin_a
+        # Positive terminal at top-left (-15, -35)
+        pos_local_x = -15
+        pos_local_y = -35
+        pos_x = pos_local_x * cos_a - pos_local_y * sin_a
+        pos_y = pos_local_x * sin_a + pos_local_y * cos_a
         self.positive.position = Point(
             x=self.position.x + pos_x, y=self.position.y + pos_y
         )
 
-        # Left side (negative terminal) at -40 offset
-        neg_x = -40 * cos_a
-        neg_y = -40 * sin_a
+        # Negative terminal at top-right (15, -35)
+        neg_local_x = 15
+        neg_local_y = -35
+        neg_x = neg_local_x * cos_a - neg_local_y * sin_a
+        neg_y = neg_local_x * sin_a + neg_local_y * cos_a
         self.negative.position = Point(
             x=self.position.x + neg_x, y=self.position.y + neg_y
         )
@@ -116,22 +122,26 @@ class LED(CircuitObject):
         """Update connection points based on LED position and rotation."""
         import math
 
-        # LED is vertical, anode on top, cathode on bottom
+        # LED has leads at bottom: anode at (-6, 30), cathode at (6, 30)
         # Apply rotation around the center
         angle = math.radians(self.rotation)
         cos_a = math.cos(angle)
         sin_a = math.sin(angle)
 
-        # Top (anode) at -30 offset in y
-        anode_x = -30 * sin_a
-        anode_y = -30 * cos_a
+        # Anode lead at bottom-left (-6, 30)
+        anode_local_x = -6
+        anode_local_y = 30
+        anode_x = anode_local_x * cos_a - anode_local_y * sin_a
+        anode_y = anode_local_x * sin_a + anode_local_y * cos_a
         self.anode.position = Point(
             x=self.position.x + anode_x, y=self.position.y + anode_y
         )
 
-        # Bottom (cathode) at +30 offset in y
-        cathode_x = 30 * sin_a
-        cathode_y = 30 * cos_a
+        # Cathode lead at bottom-right (6, 30)
+        cathode_local_x = 6
+        cathode_local_y = 30
+        cathode_x = cathode_local_x * cos_a - cathode_local_y * sin_a
+        cathode_y = cathode_local_x * sin_a + cathode_local_y * cos_a
         self.cathode.position = Point(
             x=self.position.x + cathode_x, y=self.position.y + cathode_y
         )
