@@ -29,4 +29,9 @@ def index() -> None:
 
 def run() -> None:
     """Run the circuit simulation application."""
-    ui.run(title="Entropy Simulation", port=8080, reload=False)
+    ui.run(
+        title="Entropy Simulation",
+        port=8080,
+        reload=True,
+        storage_secret="entropy-sim-dev-secret",
+    )

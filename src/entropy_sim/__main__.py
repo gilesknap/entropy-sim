@@ -31,5 +31,5 @@ def main(args: Sequence[str] | None = None) -> None:
     run()
 
 
-if __name__ == "__main__":
-    main()
+# Allow reload mode to work - no guard needed for ui.run()
+main()
