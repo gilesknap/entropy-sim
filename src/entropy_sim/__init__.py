@@ -7,5 +7,6 @@
 """
 
 from ._version import __version__
+from .models import LED, Battery, Circuit, Point, Wire
 
-__all__ = ["__version__"]
+__all__ = ["__version__", "Battery", "Circuit", "LED", "Point", "Wire"]

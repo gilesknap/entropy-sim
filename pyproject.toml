@@ -12,7 +12,10 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 description = "An energy transormation simulation tool for learning about entropy"
-dependencies = [] # Add project dependencies here, e.g. ["click", "numpy"]
+dependencies = [
+    "pydantic>=2.0",
+    "nicegui>=1.4",
+]
 dynamic = ["version"]
 license.file = "LICENSE"
 readme = "README.md"
