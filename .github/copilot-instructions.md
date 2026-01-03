@@ -78,6 +78,7 @@ Uses **NiceGUI** with:
 - Dev tools: `pytest`, `ruff`, `pyright`, `tox`
 - Run with: `uv run entropy-sim`
 - Tests: `uv run tox -p`
+- **Install packages with: `uv pip install <package>` (not plain `pip`)**
 
 ## Code Style
 
