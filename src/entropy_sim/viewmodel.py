@@ -5,8 +5,7 @@ from uuid import UUID
 
 from nicegui import ui
 
-from .models import LED, Battery, Circuit, Point, Wire
-from .pathfinding import find_wire_path
+from .models import LED, Battery, Circuit, ConnectionPoint, Point, Wire, WirePoint
 
 
 class CircuitViewModel:
@@ -27,8 +26,12 @@ class CircuitViewModel:
         self.selected_palette_item: str | None = None
         self.dragging_component: UUID | None = None
         self.dragging_wire: Wire | None = None
-        self.wire_start_point: Point | None = None
         self.drag_offset = Point(x=0, y=0)
+
+        # Wire corner dragging state
+        self.dragging_wire_corner: tuple[UUID, int] | None = (
+            None  # (wire_id, corner_index)
+        )
 
         # Undo/redo history
         self.undo_stack: list[str] = []  # JSON snapshots of circuit state
@@ -80,33 +83,69 @@ class CircuitViewModel:
     # === Wire Operations ===
 
     def start_wire(self, pos: Point) -> None:
-        """Start drawing a new wire."""
-        self._save_state()
-
+        """Start drawing a new wire or add a segment."""
         nearest = self.circuit.find_nearest_connection_point(pos, self.SNAP_DISTANCE)
+
+        # If already drawing a wire, this click adds a corner or finishes
+        if self.dragging_wire:
+            if nearest:
+                # Clicked on a connection point - finish the wire
+                self._finish_wire_at_connection(nearest)
+            else:
+                # Add a corner point and continue drawing
+                self._add_wire_corner(pos)
+            return
+
+        # Starting a new wire
+        self._save_state()
         wire = self.circuit.add_wire()
         self.dragging_wire = wire
 
         if nearest:
             _obj_id, conn_point, _ = nearest
-            wire.start.position = Point(
-                x=conn_point.position.x, y=conn_point.position.y
-            )
+            start_pos = Point(x=conn_point.position.x, y=conn_point.position.y)
+            wire.start.position = start_pos
             wire.start_connected_to = conn_point.id
-            self.wire_start_point = conn_point.position
+            wire.path = [WirePoint(x=start_pos.x, y=start_pos.y)]
         else:
             wire.start.position = pos
-            self.wire_start_point = pos
+            wire.path = [WirePoint(x=pos.x, y=pos.y)]
 
         wire.end.position = pos
-        wire.path = find_wire_path(
-            wire.start.position, wire.end.position, self.circuit, str(wire.id)
-        )
+        self._notify_change()
+
+    def _add_wire_corner(self, pos: Point) -> None:
+        """Add a corner point to the wire being drawn."""
+        if not self.dragging_wire:
+            return
+        # Add the corner point to the path
+        self.dragging_wire.path.append(WirePoint(x=pos.x, y=pos.y))
+        self._notify_change()
+
+    def _finish_wire_at_connection(
+        self, nearest: tuple[UUID, "ConnectionPoint", "Battery | LED"]
+    ) -> None:
+        """Finish wire at a connection point."""
+        if not self.dragging_wire:
+            return
+
+        _obj_id, conn_point, _ = nearest
+        end_pos = Point(x=conn_point.position.x, y=conn_point.position.y)
+
+        self.dragging_wire.end.position = end_pos
+        self.dragging_wire.end_connected_to = conn_point.id
+        conn_point.connected_to = self.dragging_wire.id
+
+        # Add final point to path
+        self.dragging_wire.path.append(WirePoint(x=end_pos.x, y=end_pos.y))
+
+        self.dragging_wire = None
+        self.selected_palette_item = None
         self._notify_change()
 
     def update_wire_end(self, pos: Point) -> None:
-        """Update the end position of a wire being drawn."""
-        if not self.dragging_wire or not self.wire_start_point:
+        """Update the preview end position of a wire being drawn."""
+        if not self.dragging_wire:
             return
 
         nearest = self.circuit.find_nearest_connection_point(pos, self.SNAP_DISTANCE)
@@ -118,43 +157,42 @@ class CircuitViewModel:
             end_pos = pos
 
         self.dragging_wire.end.position = end_pos
-        self.dragging_wire.path = find_wire_path(
-            self.wire_start_point, end_pos, self.circuit, str(self.dragging_wire.id)
-        )
         self._notify_change()
+
+    def cancel_wire(self) -> None:
+        """Cancel wire drawing (called on Esc)."""
+        if self.dragging_wire:
+            # Remove the incomplete wire
+            self.circuit.wires.remove(self.dragging_wire)
+            self.dragging_wire = None
+            self.selected_palette_item = None
+            self._notify_change()
 
     def finish_wire(self, pos: Point) -> None:
-        """Finish wire placement."""
-        if not self.dragging_wire:
-            return
-
-        nearest = self.circuit.find_nearest_connection_point(pos, self.SNAP_DISTANCE)
-
-        if nearest:
-            _obj_id, conn_point, _ = nearest
-            self.dragging_wire.end.position = Point(
-                x=conn_point.position.x, y=conn_point.position.y
-            )
-            self.dragging_wire.end_connected_to = conn_point.id
-            conn_point.connected_to = self.dragging_wire.id
-
-        if self.wire_start_point:
-            self.dragging_wire.path = find_wire_path(
-                self.wire_start_point,
-                self.dragging_wire.end.position,
-                self.circuit,
-                str(self.dragging_wire.id),
-            )
-
-        self.dragging_wire = None
-        self.wire_start_point = None
-        self.selected_palette_item = None
-        self._notify_change()
+        """Legacy method - now handled by start_wire click logic."""
+        # This is now a no-op since wire finishing is handled by clicking
+        # on connection points in start_wire
+        pass
 
     # === Component Dragging ===
 
+    WIRE_CORNER_HIT_RADIUS = 12.0  # Radius for clicking on wire corners
+
     def check_component_drag(self, pos: Point) -> bool:
         """Check if a component should be dragged. Returns True if drag started."""
+        # First check wire corners (they should be on top visually)
+        for wire in self.circuit.wires:
+            # Check intermediate points (not start/end which are connection points)
+            for i, point in enumerate(wire.path):
+                # Skip first and last points (they're connected to components)
+                if i == 0 or i == len(wire.path) - 1:
+                    continue
+                dist = ((pos.x - point.x) ** 2 + (pos.y - point.y) ** 2) ** 0.5
+                if dist <= self.WIRE_CORNER_HIT_RADIUS:
+                    self._save_state()
+                    self.dragging_wire_corner = (wire.id, i)
+                    return True
+
         # Check batteries
         for battery in self.circuit.batteries:
             if self._point_in_rect(
@@ -181,6 +219,18 @@ class CircuitViewModel:
 
     def update_component_position(self, pos: Point) -> None:
         """Update a component's position during drag."""
+        # Handle wire corner dragging
+        if self.dragging_wire_corner:
+            wire_id, corner_idx = self.dragging_wire_corner
+            for wire in self.circuit.wires:
+                if wire.id == wire_id:
+                    if 0 < corner_idx < len(wire.path):
+                        wire.path[corner_idx].x = pos.x
+                        wire.path[corner_idx].y = pos.y
+                        self._notify_change()
+                    return
+            return
+
         if not self.dragging_component:
             return
 
@@ -203,8 +253,9 @@ class CircuitViewModel:
                 return
 
     def finish_drag(self) -> None:
-        """Finish dragging a component."""
+        """Finish dragging a component or wire corner."""
         self.dragging_component = None
+        self.dragging_wire_corner = None
 
     def _update_connected_wires(self, component: Battery | LED) -> None:
         """Update wires connected to a component."""
@@ -220,22 +271,18 @@ class CircuitViewModel:
                     wire.start.position = Point(
                         x=conn_point.position.x, y=conn_point.position.y
                     )
-                    wire.path = find_wire_path(
-                        wire.start.position,
-                        wire.end.position,
-                        self.circuit,
-                        str(wire.id),
-                    )
+                    # Update first point in path to match new position
+                    if wire.path:
+                        wire.path[0].x = conn_point.position.x
+                        wire.path[0].y = conn_point.position.y
                 elif wire.end_connected_to == conn_point.id:
                     wire.end.position = Point(
                         x=conn_point.position.x, y=conn_point.position.y
                     )
-                    wire.path = find_wire_path(
-                        wire.start.position,
-                        wire.end.position,
-                        self.circuit,
-                        str(wire.id),
-                    )
+                    # Update last point in path to match new position
+                    if wire.path:
+                        wire.path[-1].x = conn_point.position.x
+                        wire.path[-1].y = conn_point.position.y
 
     def _point_in_rect(
         self, point: Point, center: Point, width: float, height: float

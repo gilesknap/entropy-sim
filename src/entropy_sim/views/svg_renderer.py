@@ -87,6 +87,7 @@ class SVGRenderer:
         svg = ""
         for wire in circuit.wires:
             if wire.path:
+                # Draw the committed path segments
                 path_d = f"M {wire.path[0].x} {wire.path[0].y}"
                 for point in wire.path[1:]:
                     path_d += f" L {point.x} {point.y}"
@@ -94,6 +95,29 @@ class SVGRenderer:
                 <path d="{path_d}" fill="none" stroke="#333" stroke-width="3"
                       stroke-linecap="round" stroke-linejoin="round"/>
                 """
+
+                # Draw preview line from last path point to end position (while drawing)
+                last_point = wire.path[-1]
+                if (
+                    abs(last_point.x - wire.end.position.x) > 1
+                    or abs(last_point.y - wire.end.position.y) > 1
+                ):
+                    svg += f"""
+                    <line x1="{last_point.x}" y1="{last_point.y}"
+                          x2="{wire.end.position.x}" y2="{wire.end.position.y}"
+                          stroke="#333" stroke-width="3" stroke-dasharray="5,5"
+                          stroke-linecap="round"/>
+                    """
+
+                # Render draggable corner handles (skip first and last points)
+                for i, point in enumerate(wire.path):
+                    if i == 0 or i == len(wire.path) - 1:
+                        continue
+                    svg += f"""
+                    <circle cx="{point.x}" cy="{point.y}" r="6"
+                            fill="#6366f1" stroke="#fff" stroke-width="2"
+                            style="cursor: move;"/>
+                    """
         return svg
 
     def _render_connection_points(self, circuit: Circuit) -> str:

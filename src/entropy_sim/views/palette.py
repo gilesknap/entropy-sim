@@ -104,6 +104,10 @@ class PaletteView:
                 self.viewmodel.redo()
             elif e.key == "z" and e.modifiers.ctrl:
                 self.viewmodel.undo()
+            elif e.key == "Escape":
+                self.viewmodel.cancel_wire()
+                if self.selection_label:
+                    self.selection_label.set_text("None")
 
     def update_selection_label(self, text: str) -> None:
         """Update the selection label text."""
