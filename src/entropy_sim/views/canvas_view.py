@@ -53,9 +53,9 @@ class CircuitCanvasView:
         svg_b64 = base64.b64encode(svg_data.encode()).decode()
         data_uri = f"data:image/svg+xml;base64,{svg_b64}"
 
-        # Get current canvas dimensions from renderer
-        canvas_width = self.renderer.width
-        canvas_height = self.renderer.height
+        # Canvas uses fixed pixel dimensions from renderer
+        canvas_w = self.renderer.width
+        canvas_h = self.renderer.height
 
         with (
             ui.element("div")
@@ -74,10 +74,7 @@ class CircuitCanvasView:
                     cross=False,
                 )
                 .classes("border border-gray-300")
-                .style(
-                    f"width: {canvas_width}px; height: {canvas_height}px; "
-                    "min-width: unset; min-height: unset;"
-                )
+                .style(f"width: {canvas_w}px; height: {canvas_h}px;")
             )
 
     def _on_mouse_event(self, e: MouseEventArguments) -> None:
@@ -129,10 +126,7 @@ class CircuitCanvasView:
             data_uri = f"data:image/svg+xml;base64,{svg_b64}"
             self.interactive_image.set_source(data_uri)
 
-            # Update canvas size to match new SVG dimensions
-            canvas_width = self.renderer.width
-            canvas_height = self.renderer.height
-            self.interactive_image.style(
-                f"width: {canvas_width}px; height: {canvas_height}px; "
-                "min-width: unset; min-height: unset;"
-            )
+            # Update canvas size to match SVG dimensions
+            canvas_w = self.renderer.width
+            canvas_h = self.renderer.height
+            self.interactive_image.style(f"width: {canvas_w}px; height: {canvas_h}px;")

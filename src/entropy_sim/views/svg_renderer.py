@@ -6,43 +6,40 @@ from ..models import Circuit
 class SVGRenderer:
     """Renders circuit components as SVG."""
 
-    # Minimum canvas dimensions
-    MIN_WIDTH = 800
-    MIN_HEIGHT = 600
-    # Padding around content
-    CONTENT_PADDING = 200
+    # Padding around content to ensure objects aren't clipped
+    CONTENT_PADDING = 100
+    # Default canvas size when empty
+    DEFAULT_WIDTH = 2000
+    DEFAULT_HEIGHT = 1500
 
-    def __init__(self, width: int = 800, height: int = 600) -> None:
-        """Initialize the renderer with canvas dimensions."""
-        self.width = width
-        self.height = height
+    def __init__(self) -> None:
+        """Initialize the renderer."""
+        # Track canvas dimensions (coordinate system)
+        self.width = self.DEFAULT_WIDTH
+        self.height = self.DEFAULT_HEIGHT
 
     def calculate_canvas_size(self, circuit: Circuit) -> tuple[int, int]:
-        """Calculate canvas size based on circuit content."""
+        """Calculate canvas size based on content and defaults."""
         min_x, min_y, max_x, max_y = circuit.get_bounds()
 
-        # If no content, use minimum size
-        if min_x == float("inf"):
-            return (self.MIN_WIDTH, self.MIN_HEIGHT)
+        # Start with default size
+        width = self.DEFAULT_WIDTH
+        height = self.DEFAULT_HEIGHT
 
-        # Calculate required size with padding
-        required_width = int(max_x + self.CONTENT_PADDING)
-        required_height = int(max_y + self.CONTENT_PADDING)
+        # Expand if content extends beyond defaults
+        if max_x != float("-inf"):
+            width = max(width, int(max_x + self.CONTENT_PADDING))
+            height = max(height, int(max_y + self.CONTENT_PADDING))
 
-        # Use at least minimum size
-        return (
-            max(self.MIN_WIDTH, required_width),
-            max(self.MIN_HEIGHT, required_height),
-        )
+        return (width, height)
 
     def render_circuit(self, circuit: Circuit) -> str:
         """Generate the complete SVG for the circuit."""
-        width, height = self.calculate_canvas_size(circuit)
-        self.width = width
-        self.height = height
+        self.width, self.height = self.calculate_canvas_size(circuit)
 
+        # SVG uses fixed dimensions for coordinate system
         return f"""
-        <svg width="{width}" height="{height}"
+        <svg width="{self.width}" height="{self.height}"
              xmlns="http://www.w3.org/2000/svg"
              style="background-color: #f8f9fa;">
             <!-- Grid pattern -->
