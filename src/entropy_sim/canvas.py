@@ -4,7 +4,7 @@ import base64
 from uuid import UUID
 
 from nicegui import ui
-from nicegui.events import MouseEventArguments
+from nicegui.events import KeyEventArguments, MouseEventArguments
 
 from .models import LED, Battery, Circuit, Point, Wire
 from .pathfinding import find_wire_path
@@ -34,6 +34,10 @@ class CircuitCanvas:
         self.wire_start_point: Point | None = None
         self.drag_offset = Point(x=0, y=0)
         self.selection_label: ui.label | None = None
+        # Undo/redo history
+        self.undo_stack: list[str] = []  # JSON snapshots of circuit state
+        self.redo_stack: list[str] = []
+        self.max_history = 50
 
     def render(self) -> None:
         """Render the complete circuit canvas UI."""
@@ -84,6 +88,20 @@ class CircuitCanvas:
             ui.separator().classes("my-2")
             ui.label("Selected:").classes("text-sm")
             self.selection_label = ui.label("None").classes("text-sm font-bold")
+
+            # Undo/Redo buttons
+            ui.separator().classes("my-2")
+            ui.label("History").classes("text-sm font-bold")
+            with ui.row().classes("gap-1 w-full justify-center"):
+                ui.button(icon="undo", on_click=self._undo).props("flat dense").tooltip(
+                    "Undo (Ctrl+Z)"
+                )
+                ui.button(icon="redo", on_click=self._redo).props("flat dense").tooltip(
+                    "Redo (Ctrl+Shift+Z)"
+                )
+
+        # Add keyboard shortcuts
+        ui.keyboard(on_key=self._handle_keyboard)
 
     def _render_canvas(self) -> None:
         """Render the main SVG canvas."""
@@ -299,6 +317,7 @@ class CircuitCanvas:
 
     def _place_component(self, pos: Point) -> None:
         """Place a new component on the canvas."""
+        self._save_state()
         if self.selected_palette_item == "battery":
             self.circuit.add_battery(pos)
             ui.notify("Battery placed!")
@@ -312,6 +331,7 @@ class CircuitCanvas:
 
     def _start_wire(self, pos: Point) -> None:
         """Start drawing a new wire."""
+        self._save_state()
         # Check if starting near a connection point
         nearest = self.circuit.find_nearest_connection_point(pos, self.SNAP_DISTANCE)
 
@@ -387,6 +407,7 @@ class CircuitCanvas:
             if self._point_in_rect(
                 pos, battery.position, self.BATTERY_WIDTH, self.BATTERY_HEIGHT
             ):
+                self._save_state()  # Save before drag starts
                 self.dragging_component = battery.id
                 self.drag_offset = Point(
                     x=pos.x - battery.position.x, y=pos.y - battery.position.y
@@ -396,6 +417,7 @@ class CircuitCanvas:
         # Check LEDs
         for led in self.circuit.leds:
             if self._point_in_rect(pos, led.position, self.LED_WIDTH, self.LED_HEIGHT):
+                self._save_state()  # Save before drag starts
                 self.dragging_component = led.id
                 self.drag_offset = Point(
                     x=pos.x - led.position.x, y=pos.y - led.position.y
@@ -468,6 +490,7 @@ class CircuitCanvas:
 
     def _clear_circuit(self) -> None:
         """Clear all components from the circuit."""
+        self._save_state()
         self.circuit = Circuit()
         self._update_canvas()
         ui.notify("Circuit cleared!")
@@ -485,6 +508,56 @@ class CircuitCanvas:
     def _load_circuit(self) -> None:
         """Load a circuit (placeholder)."""
         ui.notify("Load functionality coming soon!")
+
+    def _save_state(self) -> None:
+        """Save the current circuit state to the undo stack."""
+        state = self.circuit.model_dump_json()
+        self.undo_stack.append(state)
+        # Limit history size
+        if len(self.undo_stack) > self.max_history:
+            self.undo_stack.pop(0)
+        # Clear redo stack when new action is performed
+        self.redo_stack.clear()
+
+    def _undo(self) -> None:
+        """Undo the last action."""
+        if not self.undo_stack:
+            ui.notify("Nothing to undo", type="warning")
+            return
+
+        # Save current state to redo stack
+        current_state = self.circuit.model_dump_json()
+        self.redo_stack.append(current_state)
+
+        # Restore previous state
+        previous_state = self.undo_stack.pop()
+        self.circuit = Circuit.model_validate_json(previous_state)
+        self._update_canvas()
+        ui.notify("Undone", type="info")
+
+    def _redo(self) -> None:
+        """Redo the last undone action."""
+        if not self.redo_stack:
+            ui.notify("Nothing to redo", type="warning")
+            return
+
+        # Save current state to undo stack
+        current_state = self.circuit.model_dump_json()
+        self.undo_stack.append(current_state)
+
+        # Restore next state
+        next_state = self.redo_stack.pop()
+        self.circuit = Circuit.model_validate_json(next_state)
+        self._update_canvas()
+        ui.notify("Redone", type="info")
+
+    def _handle_keyboard(self, e: KeyEventArguments) -> None:
+        """Handle keyboard shortcuts."""
+        if e.action.keydown:
+            if e.key == "z" and e.modifiers.ctrl and e.modifiers.shift:
+                self._redo()
+            elif e.key == "z" and e.modifiers.ctrl:
+                self._undo()
 
 
 @ui.page("/")
