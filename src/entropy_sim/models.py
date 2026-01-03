@@ -69,10 +69,28 @@ class Battery(CircuitObject):
         self.update_connection_positions()
 
     def update_connection_positions(self) -> None:
-        """Update connection points based on battery position."""
+        """Update connection points based on battery position and rotation."""
+        import math
+
         # Battery is horizontal, positive on right, negative on left
-        self.positive.position = Point(x=self.position.x + 40, y=self.position.y)
-        self.negative.position = Point(x=self.position.x - 40, y=self.position.y)
+        # Apply rotation around the center
+        angle = math.radians(self.rotation)
+        cos_a = math.cos(angle)
+        sin_a = math.sin(angle)
+
+        # Right side (positive terminal) at +40 offset
+        pos_x = 40 * cos_a
+        pos_y = 40 * sin_a
+        self.positive.position = Point(
+            x=self.position.x + pos_x, y=self.position.y + pos_y
+        )
+
+        # Left side (negative terminal) at -40 offset
+        neg_x = -40 * cos_a
+        neg_y = -40 * sin_a
+        self.negative.position = Point(
+            x=self.position.x + neg_x, y=self.position.y + neg_y
+        )
 
 
 class LED(CircuitObject):
@@ -95,10 +113,28 @@ class LED(CircuitObject):
         self.update_connection_positions()
 
     def update_connection_positions(self) -> None:
-        """Update connection points based on LED position."""
+        """Update connection points based on LED position and rotation."""
+        import math
+
         # LED is vertical, anode on top, cathode on bottom
-        self.anode.position = Point(x=self.position.x, y=self.position.y - 30)
-        self.cathode.position = Point(x=self.position.x, y=self.position.y + 30)
+        # Apply rotation around the center
+        angle = math.radians(self.rotation)
+        cos_a = math.cos(angle)
+        sin_a = math.sin(angle)
+
+        # Top (anode) at -30 offset in y
+        anode_x = -30 * sin_a
+        anode_y = -30 * cos_a
+        self.anode.position = Point(
+            x=self.position.x + anode_x, y=self.position.y + anode_y
+        )
+
+        # Bottom (cathode) at +30 offset in y
+        cathode_x = 30 * sin_a
+        cathode_y = 30 * cos_a
+        self.cathode.position = Point(
+            x=self.position.x + cathode_x, y=self.position.y + cathode_y
+        )
 
 
 class WirePoint(BaseModel):

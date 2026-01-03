@@ -70,7 +70,9 @@ class SVGRenderer:
         """Generate SVG for all batteries."""
         svg = ""
         for battery in circuit.batteries:
-            svg += self.get_battery_svg(battery.position.x, battery.position.y)
+            svg += self.get_battery_svg(
+                battery.position.x, battery.position.y, battery.rotation
+            )
         return svg
 
     def _render_leds(self, circuit: Circuit) -> str:
@@ -78,7 +80,7 @@ class SVGRenderer:
         svg = ""
         for led in circuit.leds:
             svg += self.get_led_svg(
-                led.position.x, led.position.y, led.color, led.is_on
+                led.position.x, led.position.y, led.color, led.is_on, led.rotation
             )
         return svg
 
@@ -136,7 +138,9 @@ class SVGRenderer:
             """
         return svg
 
-    def get_battery_svg(self, x: float, y: float, mini: bool = False) -> str:
+    def get_battery_svg(
+        self, x: float, y: float, rotation: float = 0.0, mini: bool = False
+    ) -> str:
         """Generate SVG for a battery."""
         if mini:
             return """
@@ -149,10 +153,10 @@ class SVGRenderer:
             </svg>
             """
         return f"""
-        <g transform="translate({x}, {y})">
+        <g transform="translate({x}, {y}) rotate({rotation})">
             <rect x="-35" y="-15" width="70" height="30" rx="3"
-                  fill="#fbbf24" stroke="#92400e" stroke-width="2"/>
-            <rect x="35" y="-8" width="5" height="16" fill="#92400e"/>
+                  fill="#fbbf24" fill-opacity="0.7" stroke="#92400e" stroke-width="2"/>
+            <rect x="-40" y="-8" width="5" height="16" fill="#92400e"/>
             <text x="-20" y="5" text-anchor="middle" font-size="14"
                   font-weight="bold" fill="#92400e">+</text>
             <text x="20" y="5" text-anchor="middle" font-size="14"
@@ -166,6 +170,7 @@ class SVGRenderer:
         y: float,
         color: str = "red",
         is_on: bool = False,
+        rotation: float = 0.0,
         mini: bool = False,
     ) -> str:
         """Generate SVG for an LED."""
@@ -184,7 +189,7 @@ class SVGRenderer:
             </svg>
             """
         return f"""
-        <g transform="translate({x}, {y})">
+        <g transform="translate({x}, {y}) rotate({rotation})">
             <defs>
                 <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
                     <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
@@ -194,7 +199,7 @@ class SVGRenderer:
                     </feMerge>
                 </filter>
             </defs>
-            <polygon points="0,-20 15,15 -15,15" fill="{led_color}"
+            <polygon points="0,-20 15,15 -15,15" fill="{led_color}" fill-opacity="0.7"
                      stroke="#333" stroke-width="2" {glow}/>
             <line x1="-15" y1="15" x2="15" y2="15"
                   stroke="#333" stroke-width="3"/>

@@ -93,7 +93,16 @@ class CircuitCanvasView:
         if self.interactive_image:
             with self.interactive_image:
                 with ui.context_menu() as self.context_menu:
-                    self.context_menu_item = ui.menu_item(
+                    self.rotate_cw_item = ui.menu_item(
+                        "Rotate 90° CW",
+                        on_click=lambda: self._rotate_context_target(90),
+                    )
+                    self.rotate_ccw_item = ui.menu_item(
+                        "Rotate 90° CCW",
+                        on_click=lambda: self._rotate_context_target(-90),
+                    )
+                    ui.separator()
+                    self.delete_menu_item = ui.menu_item(
                         "Delete", on_click=self._delete_context_target
                     )
 
@@ -120,9 +129,15 @@ class CircuitCanvasView:
             obj_type, obj_id = obj
             self._context_menu_target = (obj_type, obj_id)
             self._context_menu_type_name = obj_type.capitalize()
+            # Show/hide rotation options based on object type
+            is_rotatable = obj_type in ("battery", "led")
+            self.rotate_cw_item.set_visibility(is_rotatable)
+            self.rotate_ccw_item.set_visibility(is_rotatable)
         else:
             self._context_menu_target = None
             self._context_menu_type_name = ""
+            self.rotate_cw_item.set_visibility(False)
+            self.rotate_ccw_item.set_visibility(False)
 
     def _on_mouse_event(self, e: MouseEventArguments) -> None:
         """Handle mouse events on canvas."""
@@ -135,6 +150,15 @@ class CircuitCanvasView:
             self._handle_mouse_move(pos)
         elif event_type == "mouseup":
             self._handle_mouse_up(pos)
+
+    def _rotate_context_target(self, degrees: float) -> None:
+        """Rotate the object that was right-clicked."""
+        if self._context_menu_target:
+            obj_type, obj_id = self._context_menu_target
+            self.viewmodel.rotate_object(obj_type, obj_id, degrees)
+            # Clear any drag state that might have been set
+            self.viewmodel.dragging_component = None
+            self.viewmodel.dragging_wire_corner = None
 
     def _delete_context_target(self) -> None:
         """Delete the object targeted by context menu."""

@@ -313,6 +313,47 @@ class CircuitViewModel:
         self.circuit.wires = [w for w in self.circuit.wires if w.id != wire_id]
         ui.notify("Wire deleted")
 
+    # === Rotation Operations ===
+
+    def rotate_object(self, obj_type: str, obj_id: UUID, degrees: float) -> None:
+        """Rotate an object by the specified degrees."""
+        self._save_state()
+
+        if obj_type == "battery":
+            self._rotate_battery(obj_id, degrees)
+        elif obj_type == "led":
+            self._rotate_led(obj_id, degrees)
+
+        self._notify_change()
+
+    def _rotate_battery(self, battery_id: UUID, degrees: float) -> None:
+        """Rotate a battery and update its connected wires."""
+        battery = next((b for b in self.circuit.batteries if b.id == battery_id), None)
+        if not battery:
+            return
+
+        battery.rotation = (battery.rotation + degrees) % 360
+        battery.update_connection_positions()
+
+        # Update connected wires
+        self._wire_manager.update_connected_wires(battery)
+
+        ui.notify(f"Battery rotated {degrees}°")
+
+    def _rotate_led(self, led_id: UUID, degrees: float) -> None:
+        """Rotate an LED and update its connected wires."""
+        led = next((item for item in self.circuit.leds if item.id == led_id), None)
+        if not led:
+            return
+
+        led.rotation = (led.rotation + degrees) % 360
+        led.update_connection_positions()
+
+        # Update connected wires
+        self._wire_manager.update_connected_wires(led)
+
+        ui.notify(f"LED rotated {degrees}°")
+
     # === Circuit Operations ===
 
     def clear_circuit(self) -> None:
