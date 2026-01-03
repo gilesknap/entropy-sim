@@ -1,0 +1,16 @@
+# Changes here will be overwritten by Copier
+_commit: 5.0.1
+_src_path: https://github.com/DiamondLightSource/python-copier-template
+author_email: gilesknap@gmail.com
+author_name: Giles Knap
+description: An energy transormation simulation tool for learning about entropy
+distribution_name: entropy-sim
+docker: false
+docs_type: README
+git_platform: github.com
+github_org: gilesknap
+package_name: entropy_sim
+pypi: true
+repo_name: entropy-sim
+strict_typing: true
+type_checker: pyright
