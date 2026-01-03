@@ -1,5 +1,6 @@
 """NiceGUI-based canvas for circuit visualization and interaction."""
 
+import base64
 from uuid import UUID
 
 from nicegui import ui
@@ -26,12 +27,13 @@ class CircuitCanvas:
     def __init__(self) -> None:
         """Initialize the circuit canvas."""
         self.circuit = Circuit()
-        self.svg: ui.html | None = None
+        self.interactive_image: ui.interactive_image | None = None
         self.selected_palette_item: str | None = None
         self.dragging_component: UUID | None = None
         self.dragging_wire: Wire | None = None
         self.wire_start_point: Point | None = None
         self.drag_offset = Point(x=0, y=0)
+        self.selection_label: ui.label | None = None
 
     def render(self) -> None:
         """Render the complete circuit canvas UI."""
@@ -85,21 +87,20 @@ class CircuitCanvas:
 
     def _render_canvas(self) -> None:
         """Render the main SVG canvas."""
-        canvas_container = ui.card().classes("p-0 relative")
-        canvas_container.style(
-            f"width: {self.CANVAS_WIDTH}px; height: {self.CANVAS_HEIGHT}px; "
-            "overflow: hidden; cursor: crosshair;"
+        # Create SVG as a data URI for use with interactive_image
+        svg_data = self._generate_svg()
+        svg_b64 = base64.b64encode(svg_data.encode()).decode()
+        data_uri = f"data:image/svg+xml;base64,{svg_b64}"
+
+        self.interactive_image = ui.interactive_image(
+            data_uri,
+            on_mouse=self._on_mouse_event,
+            events=["mousedown", "mouseup", "mousemove"],
+            cross=False,
+        ).classes("border border-gray-300")
+        self.interactive_image.style(
+            f"width: {self.CANVAS_WIDTH}px; height: {self.CANVAS_HEIGHT}px;"
         )
-
-        with canvas_container:
-            self.svg = ui.html(self._generate_svg(), sanitize=False).classes(
-                "w-full h-full"
-            )
-
-        # Add mouse event handlers
-        canvas_container.on("mousedown", self._on_mouse_down)
-        canvas_container.on("mousemove", self._on_mouse_move)
-        canvas_container.on("mouseup", self._on_mouse_up)
 
     def _render_controls(self) -> None:
         """Render control buttons."""
@@ -115,7 +116,7 @@ class CircuitCanvas:
     def _generate_svg(self) -> str:
         """Generate the complete SVG for the circuit."""
         svg_content = f"""
-        <svg width="{self.CANVAS_WIDTH}" height="{self.CANVAS_HEIGHT}" 
+        <svg width="{self.CANVAS_WIDTH}" height="{self.CANVAS_HEIGHT}"
              xmlns="http://www.w3.org/2000/svg"
              style="background-color: #f8f9fa;">
             <!-- Grid pattern -->
@@ -125,16 +126,16 @@ class CircuitCanvas:
                 </pattern>
             </defs>
             <rect width="100%" height="100%" fill="url(#grid)"/>
-            
+
             <!-- Wires (render first so components appear on top) -->
             {self._render_wires_svg()}
-            
+
             <!-- Batteries -->
             {self._render_batteries_svg()}
-            
+
             <!-- LEDs -->
             {self._render_leds_svg()}
-            
+
             <!-- Connection points (render last for visibility) -->
             {self._render_connection_points_svg()}
         </svg>
@@ -166,7 +167,7 @@ class CircuitCanvas:
                 for point in wire.path[1:]:
                     path_d += f" L {point.x} {point.y}"
                 svg += f"""
-                <path d="{path_d}" fill="none" stroke="#333" stroke-width="3" 
+                <path d="{path_d}" fill="none" stroke="#333" stroke-width="3"
                       stroke-linecap="round" stroke-linejoin="round"/>
                 """
         return svg
@@ -183,7 +184,7 @@ class CircuitCanvas:
                 color = "#1e40af" if not conn_point.connected_to else "#22c55e"
 
             svg += f"""
-            <circle cx="{conn_point.position.x}" cy="{conn_point.position.y}" 
+            <circle cx="{conn_point.position.x}" cy="{conn_point.position.y}"
                     r="6" fill="{color}" stroke="#fff" stroke-width="2"/>
             """
         return svg
@@ -272,49 +273,29 @@ class CircuitCanvas:
         self.selection_label.set_text(item.capitalize())
         ui.notify(f"Selected: {item}. Click on canvas to place.")
 
-    def _on_mouse_down(self, e: MouseEventArguments) -> None:
-        """Handle mouse down on canvas."""
-        # Get position relative to canvas
-        pos = self._get_canvas_position(e)
+    def _on_mouse_event(self, e: MouseEventArguments) -> None:
+        """Handle all mouse events on canvas."""
+        pos = Point(x=e.image_x, y=e.image_y)
+        event_type = e.type
 
-        if self.selected_palette_item == "wire":
-            # Start drawing a wire
-            self._start_wire(pos)
-        elif self.selected_palette_item:
-            # Place a new component
-            self._place_component(pos)
-        else:
-            # Check if clicking on an existing component to drag it
-            self._check_component_drag(pos)
-
-    def _on_mouse_move(self, e: MouseEventArguments) -> None:
-        """Handle mouse move on canvas."""
-        pos = self._get_canvas_position(e)
-
-        if self.dragging_wire:
-            # Update wire end position
-            self._update_wire_end(pos)
-        elif self.dragging_component:
-            # Update component position
-            self._update_component_position(pos)
-
-    def _on_mouse_up(self, e: MouseEventArguments) -> None:
-        """Handle mouse up on canvas."""
-        pos = self._get_canvas_position(e)
-
-        if self.dragging_wire:
-            # Finish wire placement
-            self._finish_wire(pos)
-        elif self.dragging_component:
-            # Finish component drag
-            self.dragging_component = None
-
-        self._update_canvas()
-
-    def _get_canvas_position(self, e: MouseEventArguments) -> Point:
-        """Extract canvas position from mouse event."""
-        # NiceGUI provides image_x and image_y for position relative to element
-        return Point(x=e.image_x, y=e.image_y)
+        if event_type == "mousedown":
+            if self.selected_palette_item == "wire":
+                self._start_wire(pos)
+            elif self.selected_palette_item:
+                self._place_component(pos)
+            else:
+                self._check_component_drag(pos)
+        elif event_type == "mousemove":
+            if self.dragging_wire:
+                self._update_wire_end(pos)
+            elif self.dragging_component:
+                self._update_component_position(pos)
+        elif event_type == "mouseup":
+            if self.dragging_wire:
+                self._finish_wire(pos)
+            elif self.dragging_component:
+                self.dragging_component = None
+            self._update_canvas()
 
     def _place_component(self, pos: Point) -> None:
         """Place a new component on the canvas."""
@@ -479,8 +460,11 @@ class CircuitCanvas:
 
     def _update_canvas(self) -> None:
         """Update the canvas SVG."""
-        if self.svg:
-            self.svg.set_content(self._generate_svg())
+        if self.interactive_image:
+            svg_data = self._generate_svg()
+            svg_b64 = base64.b64encode(svg_data.encode()).decode()
+            data_uri = f"data:image/svg+xml;base64,{svg_b64}"
+            self.interactive_image.set_source(data_uri)
 
     def _clear_circuit(self) -> None:
         """Clear all components from the circuit."""
