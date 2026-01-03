@@ -122,13 +122,35 @@ class WireManager:
 
         last_point = self.dragging_wire.path[-1]
 
-        # Check if we need an intermediate corner to maintain orthogonality
+        # Check if we need to adjust for orthogonality
         dx = abs(end_pos.x - last_point.x)
         dy = abs(end_pos.y - last_point.y)
 
         if dx > 1 and dy > 1:
-            corner = WirePoint(x=end_pos.x, y=last_point.y)
-            self.dragging_wire.path.append(corner)
+            # Not aligned - need to adjust to maintain orthogonality
+            # Determine what orientation the last segment should be based on
+            # the alternating pattern
+            if len(self.dragging_wire.path) >= 2:
+                prev_point = self.dragging_wire.path[-2]
+                # Check if segment prev->last is horizontal or vertical
+                prev_seg_horizontal = abs(last_point.y - prev_point.y) < 1
+
+                if prev_seg_horizontal:
+                    # Previous segment is horizontal (same y)
+                    # So last->endpoint should be vertical (same x)
+                    # Adjust last_point.x to match endpoint.x
+                    last_point.x = end_pos.x
+                else:
+                    # Previous segment is vertical (same x)
+                    # So last->endpoint should be horizontal (same y)
+                    # Adjust last_point.y to match endpoint.y
+                    last_point.y = end_pos.y
+            else:
+                # Only one point - choose based on smaller displacement
+                if dx < dy:
+                    last_point.y = end_pos.y
+                else:
+                    last_point.x = end_pos.x
 
         self.dragging_wire.path.append(WirePoint(x=end_pos.x, y=end_pos.y))
 
