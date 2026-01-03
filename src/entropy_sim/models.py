@@ -38,6 +38,8 @@ class CircuitObject(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     position: Point = Field(default_factory=Point)
     rotation: float = 0.0  # Rotation in degrees
+    rotatable: bool = False  # Whether this object can be rotated
+    has_connections: bool = False  # Whether this object has connection points
     size_x: float = 0.0  # Half-width (extends left and right from position)
     size_y: float = 0.0  # Half-height (extends up and down from position)
 
@@ -50,11 +52,23 @@ class CircuitObject(BaseModel):
             self.position.y + self.size_y,
         )
 
+    def contains_point(self, point: Point) -> bool:
+        """Check if a point is within this object's bounds."""
+        min_x, min_y, max_x, max_y = self.get_bounds()
+        return min_x <= point.x <= max_x and min_y <= point.y <= max_y
+
+    def update_connection_positions(self) -> None:
+        """Update connection points based on position and rotation. Override
+        in subclasses."""
+        raise NotImplementedError
+
 
 class Battery(CircuitObject):
     """A battery with positive and negative terminals."""
 
     object_type: Literal[ObjectType.BATTERY] = ObjectType.BATTERY
+    rotatable: bool = True
+    has_connections: bool = True
     voltage: float = 9.0  # Volts
     size_x: float = 40.0  # Battery is 80 wide
     size_y: float = 20.0  # Battery is 40 tall
@@ -104,6 +118,8 @@ class LiIonCell(CircuitObject):
     """A cylindrical Lithium Ion battery cell with button positive terminal."""
 
     object_type: Literal[ObjectType.LIION_CELL] = ObjectType.LIION_CELL
+    rotatable: bool = True
+    has_connections: bool = True
     voltage: float = 3.7  # Volts (typical Li-Ion)
     size_x: float = 30.0  # Cell is 60 wide
     size_y: float = 10.0  # Cell is 20 tall
@@ -153,6 +169,8 @@ class LED(CircuitObject):
     """An LED with anode and cathode terminals."""
 
     object_type: Literal[ObjectType.LED] = ObjectType.LED
+    rotatable: bool = True
+    has_connections: bool = True
     color: str = "red"
     is_on: bool = False
     size_x: float = 15.0  # LED is 30 wide
@@ -237,6 +255,12 @@ class Circuit(BaseModel):
     liion_cells: list[LiIonCell] = Field(default_factory=list)
     leds: list[LED] = Field(default_factory=list)
     wires: list[Wire] = Field(default_factory=list)
+    components: list[CircuitObject] = Field(default_factory=list)
+
+    def model_post_init(self, __context: object) -> None:
+        """Sync components list after deserialization."""
+        # Rebuild components list from separate type lists
+        self.components = [*self.batteries, *self.liion_cells, *self.leds]
 
     @property
     def all_objects(self) -> list[CircuitObject]:
@@ -267,6 +291,7 @@ class Circuit(BaseModel):
         battery = Battery(position=position or Point())
         battery.update_connection_positions()
         self.batteries.append(battery)
+        self.components.append(battery)
         return battery
 
     def add_liion_cell(self, position: Point | None = None) -> LiIonCell:
@@ -274,11 +299,16 @@ class Circuit(BaseModel):
         cell = LiIonCell(position=position or Point())
         cell.update_connection_positions()
         self.liion_cells.append(cell)
+        self.components.append(cell)
         return cell
 
     def add_led(self, position: Point | None = None, color: str = "red") -> LED:
         """Add a new LED to the circuit."""
         led = LED(position=position or Point(), color=color)
+        led.update_connection_positions()
+        self.leds.append(led)
+        self.components.append(led)
+        return led
         led.update_connection_positions()
         self.leds.append(led)
         return led

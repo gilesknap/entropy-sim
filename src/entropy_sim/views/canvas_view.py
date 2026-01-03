@@ -126,13 +126,12 @@ class CircuitCanvasView:
 
         obj = self.viewmodel.get_object_at(pos)
         if obj:
-            obj_type, obj_id = obj
+            obj_type, obj_id, circuit_obj = obj
             self._context_menu_target = (obj_type, obj_id)
             self._context_menu_type_name = obj_type.capitalize()
-            # Show/hide rotation options based on object type
-            is_rotatable = obj_type in ("battery", "liion_cell", "led")
-            self.rotate_cw_item.set_visibility(is_rotatable)
-            self.rotate_ccw_item.set_visibility(is_rotatable)
+            # Show/hide rotation options based on object's rotatable property
+            self.rotate_cw_item.set_visibility(circuit_obj.rotatable)
+            self.rotate_ccw_item.set_visibility(circuit_obj.rotatable)
         else:
             self._context_menu_target = None
             self._context_menu_type_name = ""

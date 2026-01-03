@@ -5,20 +5,21 @@ from uuid import UUID
 
 from nicegui import ui
 
-from .models import Circuit, Point, Wire, WirePoint
+from .models import (
+    LED,
+    Battery,
+    Circuit,
+    CircuitObject,
+    LiIonCell,
+    Point,
+    Wire,
+    WirePoint,
+)
 from .wire_manager import WireManager
 
 
 class CircuitViewModel:
     """ViewModel managing circuit state and operations."""
-
-    # Component dimensions for hit testing
-    BATTERY_WIDTH = 80
-    BATTERY_HEIGHT = 40
-    LIION_CELL_WIDTH = 20
-    LIION_CELL_HEIGHT = 60
-    LED_WIDTH = 30
-    LED_HEIGHT = 60
 
     def __init__(self) -> None:
         """Initialize the view model."""
@@ -133,37 +134,13 @@ class CircuitViewModel:
             self._save_state()
             return True
 
-        # Check batteries
-        for battery in self.circuit.batteries:
-            if self._point_in_rect(
-                pos, battery.position, self.BATTERY_WIDTH, self.BATTERY_HEIGHT
-            ):
+        # Check all draggable components
+        for component in self.circuit.components:
+            if component.contains_point(pos):
                 self._save_state()
-                self.dragging_component = battery.id
+                self.dragging_component = component.id
                 self.drag_offset = Point(
-                    x=pos.x - battery.position.x, y=pos.y - battery.position.y
-                )
-                return True
-
-        # Check Li-Ion cells
-        for cell in self.circuit.liion_cells:
-            if self._point_in_rect(
-                pos, cell.position, self.LIION_CELL_WIDTH, self.LIION_CELL_HEIGHT
-            ):
-                self._save_state()
-                self.dragging_component = cell.id
-                self.drag_offset = Point(
-                    x=pos.x - cell.position.x, y=pos.y - cell.position.y
-                )
-                return True
-
-        # Check LEDs
-        for led in self.circuit.leds:
-            if self._point_in_rect(pos, led.position, self.LED_WIDTH, self.LED_HEIGHT):
-                self._save_state()
-                self.dragging_component = led.id
-                self.drag_offset = Point(
-                    x=pos.x - led.position.x, y=pos.y - led.position.y
+                    x=pos.x - component.position.x, y=pos.y - component.position.y
                 )
                 return True
 
@@ -181,27 +158,13 @@ class CircuitViewModel:
 
         new_pos = Point(x=pos.x - self.drag_offset.x, y=pos.y - self.drag_offset.y)
 
-        for battery in self.circuit.batteries:
-            if battery.id == self.dragging_component:
-                battery.position = new_pos
-                battery.update_connection_positions()
-                self._wire_manager.update_connected_wires(battery)
-                self._notify_change()
-                return
-
-        for cell in self.circuit.liion_cells:
-            if cell.id == self.dragging_component:
-                cell.position = new_pos
-                cell.update_connection_positions()
-                self._wire_manager.update_connected_wires(cell)
-                self._notify_change()
-                return
-
-        for led in self.circuit.leds:
-            if led.id == self.dragging_component:
-                led.position = new_pos
-                led.update_connection_positions()
-                self._wire_manager.update_connected_wires(led)
+        for component in self.circuit.components:
+            if component.id == self.dragging_component:
+                component.position = new_pos
+                component.update_connection_positions()
+                # Update connected wires for components with connection points
+                if component.has_connections:
+                    self._wire_manager.update_connected_wires(component)
                 self._notify_change()
                 return
 
@@ -223,8 +186,8 @@ class CircuitViewModel:
 
     # === Object Detection ===
 
-    def get_object_at(self, pos: Point) -> tuple[str, UUID] | None:
-        """Get the object at a position. Returns (type, id) or None."""
+    def get_object_at(self, pos: Point) -> tuple[str, UUID, CircuitObject] | None:
+        """Get the object at a position. Returns (type, id, object) or None."""
         # Check wire corners first
         for wire in self.circuit.wires:
             for i, point in enumerate(wire.path):
@@ -232,31 +195,26 @@ class CircuitViewModel:
                     continue
                 dist = ((pos.x - point.x) ** 2 + (pos.y - point.y) ** 2) ** 0.5
                 if dist <= self._wire_manager.WIRE_CORNER_HIT_RADIUS:
-                    return ("wire", wire.id)
+                    return ("wire", wire.id, wire)
 
-        # Check batteries
-        for battery in self.circuit.batteries:
-            if self._point_in_rect(
-                pos, battery.position, self.BATTERY_WIDTH, self.BATTERY_HEIGHT
-            ):
-                return ("battery", battery.id)
-
-        # Check Li-Ion cells
-        for cell in self.circuit.liion_cells:
-            if self._point_in_rect(
-                pos, cell.position, self.LIION_CELL_WIDTH, self.LIION_CELL_HEIGHT
-            ):
-                return ("liion_cell", cell.id)
-
-        # Check LEDs
-        for led in self.circuit.leds:
-            if self._point_in_rect(pos, led.position, self.LED_WIDTH, self.LED_HEIGHT):
-                return ("led", led.id)
+        # Check all components
+        for component in self.circuit.components:
+            if component.contains_point(pos):
+                # Determine type string
+                if isinstance(component, Battery):
+                    obj_type = "battery"
+                elif isinstance(component, LiIonCell):
+                    obj_type = "liion_cell"
+                elif isinstance(component, LED):
+                    obj_type = "led"
+                else:
+                    obj_type = "unknown"
+                return (obj_type, component.id, component)
 
         # Check wire segments
         for wire in self.circuit.wires:
             if self._point_near_wire(pos, wire):
-                return ("wire", wire.id)
+                return ("wire", wire.id, wire)
 
         return None
 
@@ -326,6 +284,9 @@ class CircuitViewModel:
         self.circuit.batteries = [
             b for b in self.circuit.batteries if b.id != battery_id
         ]
+        self.circuit.components = [
+            c for c in self.circuit.components if c.id != battery_id
+        ]
         ui.notify("Battery deleted")
 
     def _delete_liion_cell(self, cell_id: UUID) -> None:
@@ -347,6 +308,9 @@ class CircuitViewModel:
         self.circuit.liion_cells = [
             c for c in self.circuit.liion_cells if c.id != cell_id
         ]
+        self.circuit.components = [
+            c for c in self.circuit.components if c.id != cell_id
+        ]
         ui.notify("Li-Ion Cell deleted")
 
     def _delete_led(self, led_id: UUID) -> None:
@@ -366,6 +330,7 @@ class CircuitViewModel:
 
         # Delete the LED
         self.circuit.leds = [item for item in self.circuit.leds if item.id != led_id]
+        self.circuit.components = [c for c in self.circuit.components if c.id != led_id]
         ui.notify("LED deleted")
 
     def _delete_wire(self, wire_id: UUID) -> None:
@@ -379,56 +344,19 @@ class CircuitViewModel:
         """Rotate an object by the specified degrees."""
         self._save_state()
 
-        if obj_type == "battery":
-            self._rotate_battery(obj_id, degrees)
-        elif obj_type == "liion_cell":
-            self._rotate_liion_cell(obj_id, degrees)
-        elif obj_type == "led":
-            self._rotate_led(obj_id, degrees)
+        # Find and rotate the component
+        for component in self.circuit.components:
+            if component.id == obj_id:
+                component.rotation = (component.rotation + degrees) % 360
+                component.update_connection_positions()
 
-        self._notify_change()
+                # Update connected wires if this component has connections
+                if component.has_connections:
+                    self._wire_manager.update_connected_wires(component)  # type: ignore[arg-type]
 
-    def _rotate_battery(self, battery_id: UUID, degrees: float) -> None:
-        """Rotate a battery and update its connected wires."""
-        battery = next((b for b in self.circuit.batteries if b.id == battery_id), None)
-        if not battery:
-            return
-
-        battery.rotation = (battery.rotation + degrees) % 360
-        battery.update_connection_positions()
-
-        # Update connected wires
-        self._wire_manager.update_connected_wires(battery)
-
-        ui.notify(f"Battery rotated {degrees}°")
-
-    def _rotate_liion_cell(self, cell_id: UUID, degrees: float) -> None:
-        """Rotate a Li-Ion cell and update its connected wires."""
-        cell = next((c for c in self.circuit.liion_cells if c.id == cell_id), None)
-        if not cell:
-            return
-
-        cell.rotation = (cell.rotation + degrees) % 360
-        cell.update_connection_positions()
-
-        # Update connected wires
-        self._wire_manager.update_connected_wires(cell)
-
-        ui.notify(f"Li-Ion Cell rotated {degrees}°")
-
-    def _rotate_led(self, led_id: UUID, degrees: float) -> None:
-        """Rotate an LED and update its connected wires."""
-        led = next((item for item in self.circuit.leds if item.id == led_id), None)
-        if not led:
-            return
-
-        led.rotation = (led.rotation + degrees) % 360
-        led.update_connection_positions()
-
-        # Update connected wires
-        self._wire_manager.update_connected_wires(led)
-
-        ui.notify(f"LED rotated {degrees}°")
+                ui.notify(f"{obj_type.replace('_', ' ').title()} rotated {degrees}°")
+                self._notify_change()
+                return
 
     # === Circuit Operations ===
 

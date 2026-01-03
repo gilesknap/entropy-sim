@@ -7,6 +7,7 @@ from .models import (
     LED,
     Battery,
     Circuit,
+    CircuitObject,
     ConnectionPoint,
     LiIonCell,
     Point,
@@ -303,7 +304,7 @@ class WireManager:
 
     # === Component Connection Updates ===
 
-    def update_connected_wires(self, component: Battery | LiIonCell | LED) -> None:
+    def update_connected_wires(self, component: CircuitObject) -> None:
         """Update wires connected to a component, maintaining orthogonal segments."""
         conn_points: list[ConnectionPoint] = []
         if isinstance(component, Battery):
