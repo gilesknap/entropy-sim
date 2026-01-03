@@ -97,9 +97,13 @@ class CircuitCanvasView:
                 ["offsetX", "offsetY"],
             )
 
-    def _on_right_click(self, e: dict) -> None:  # type: ignore[type-arg]
+    def _on_right_click(self, e: object) -> None:
         """Handle right-click on canvas to determine target object."""
-        args = e.args if hasattr(e, "args") else e
+        # Event can be dict or have args attribute depending on NiceGUI version
+        if hasattr(e, "args"):
+            args: dict[str, float] = e.args  # type: ignore[union-attr]
+        else:
+            args = e  # type: ignore[assignment]
         x = args.get("offsetX", 0)
         y = args.get("offsetY", 0)
         pos = Point(x=x, y=y)
