@@ -128,7 +128,7 @@ class CircuitCanvasView:
         if obj:
             obj_type, obj_id, circuit_obj = obj
             self._context_menu_target = (obj_type, obj_id)
-            self._context_menu_type_name = circuit_obj.type_name
+            self._context_menu_type_name = circuit_obj.display_name
             # Show/hide rotation options based on object's rotatable property
             self.rotate_cw_item.set_visibility(circuit_obj.rotatable)
             self.rotate_ccw_item.set_visibility(circuit_obj.rotatable)

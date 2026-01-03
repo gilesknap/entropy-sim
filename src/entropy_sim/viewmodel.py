@@ -200,7 +200,7 @@ class CircuitViewModel:
         # Check all components
         for component in self.circuit.components:
             if component.contains_point(pos):
-                return (component.type_name, component.id, component)
+                return (component.display_name, component.id, component)
 
         # Check wire segments
         for wire in self.circuit.wires:

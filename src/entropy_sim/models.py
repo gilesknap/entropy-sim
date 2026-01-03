@@ -15,6 +15,16 @@ class ObjectType(str, Enum):
     LED = "led"
     WIRE = "wire"
 
+    @property
+    def display_name(self) -> str:
+        """Get the human-readable display name for this object type."""
+        return {
+            ObjectType.BATTERY: "Battery",
+            ObjectType.LIION_CELL: "Li-Ion Cell",
+            ObjectType.LED: "LED",
+            ObjectType.WIRE: "Wire",
+        }[self]
+
 
 class Point(BaseModel):
     """A 2D point on the canvas."""
@@ -44,9 +54,14 @@ class CircuitObject(BaseModel):
     size_y: float = 0.0  # Half-height (extends up and down from position)
 
     @property
-    def type_name(self) -> str:
+    def display_name(self) -> str:
         """Get the display name for this object type."""
-        return "Object"
+        return self.object_type.display_name  # type: ignore[attr-defined]
+
+    @property
+    def connection_points(self) -> list[ConnectionPoint]:
+        """Get all connection points for this object."""
+        raise NotImplementedError
 
     def get_bounds(self) -> tuple[float, float, float, float]:
         """Get bounding box (min_x, min_y, max_x, max_y)."""
@@ -85,9 +100,9 @@ class Battery(CircuitObject):
     )
 
     @property
-    def type_name(self) -> str:
-        """Get the display name for this object type."""
-        return "Battery"
+    def connection_points(self) -> list[ConnectionPoint]:
+        """Get all connection points for this object."""
+        return [self.positive, self.negative]
 
     def model_post_init(self, __context: object) -> None:
         """Update connection point positions relative to battery position."""
@@ -141,9 +156,9 @@ class LiIonCell(CircuitObject):
     )
 
     @property
-    def type_name(self) -> str:
-        """Get the display name for this object type."""
-        return "Li-Ion Cell"
+    def connection_points(self) -> list[ConnectionPoint]:
+        """Get all connection points for this object."""
+        return [self.positive, self.negative]
 
     def model_post_init(self, __context: object) -> None:
         """Update connection point positions relative to cell position."""
@@ -198,9 +213,9 @@ class LED(CircuitObject):
     )
 
     @property
-    def type_name(self) -> str:
-        """Get the display name for this object type."""
-        return "LED"
+    def connection_points(self) -> list[ConnectionPoint]:
+        """Get all connection points for this object."""
+        return [self.anode, self.cathode]
 
     def model_post_init(self, __context: object) -> None:
         """Update connection point positions relative to LED position."""
@@ -254,11 +269,6 @@ class Wire(CircuitObject):
     # IDs of connection points this wire is connected to
     start_connected_to: UUID | None = None
     end_connected_to: UUID | None = None
-
-    @property
-    def type_name(self) -> str:
-        """Get the display name for this object type."""
-        return "Wire"
 
     def get_bounds(self) -> tuple[float, float, float, float]:
         """Get bounding box including all path points."""
@@ -341,15 +351,8 @@ class Circuit(BaseModel):
         """Get all connection points in the circuit with their parent objects."""
         points: list[tuple[UUID, ConnectionPoint, Component]] = []
         for component in self.components:
-            if isinstance(component, Battery):
-                points.append((component.id, component.positive, component))
-                points.append((component.id, component.negative, component))
-            elif isinstance(component, LiIonCell):
-                points.append((component.id, component.positive, component))
-                points.append((component.id, component.negative, component))
-            elif isinstance(component, LED):
-                points.append((component.id, component.anode, component))
-                points.append((component.id, component.cathode, component))
+            for conn_point in component.connection_points:
+                points.append((component.id, conn_point, component))
         return points
 
     def find_nearest_connection_point(
