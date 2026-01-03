@@ -63,7 +63,8 @@ class WireManager:
     def start_wire(self, pos: Point) -> bool:
         """Start drawing a new wire or add a segment.
 
-        Returns True if this started/modified wire drawing.
+        Returns True if wire drawing was completed (finished at connection).
+        Returns False if wire drawing is still in progress.
         """
         nearest = self._circuit.find_nearest_connection_point(pos, self.SNAP_DISTANCE)
 
@@ -71,9 +72,10 @@ class WireManager:
         if self.dragging_wire:
             if nearest:
                 self._finish_wire_at_connection(nearest)
+                return True  # Wire completed
             else:
                 self._add_wire_corner(pos)
-            return True
+                return False  # Still drawing
 
         # Starting a new wire
         wire = self._circuit.add_wire()
@@ -91,7 +93,7 @@ class WireManager:
 
         wire.end.position = pos
         self._on_change()
-        return True
+        return False  # Still drawing
 
     def _add_wire_corner(self, pos: Point) -> None:
         """Add a corner point to the wire being drawn."""

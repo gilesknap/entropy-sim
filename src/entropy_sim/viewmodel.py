@@ -97,7 +97,9 @@ class CircuitViewModel:
         """Start drawing a new wire or add a segment."""
         if not self._wire_manager.is_drawing:
             self._save_state()
-        self._wire_manager.start_wire(pos)
+        wire_completed = self._wire_manager.start_wire(pos)
+        if wire_completed:
+            self.selected_palette_item = None
 
     def update_wire_end(self, pos: Point) -> None:
         """Update the preview end position of a wire being drawn."""
