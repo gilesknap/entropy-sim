@@ -254,6 +254,19 @@ class CircuitViewModel:
 
         return False
 
+    def _get_first_segment_horizontal(self, wire: "Wire") -> bool:
+        """Determine if the first segment of a wire is horizontal."""
+        if len(wire.path) < 2:
+            return True
+        # Use original first two points to determine orientation
+        p0, p1 = wire.path[0], wire.path[1]
+        return abs(p1.x - p0.x) >= abs(p1.y - p0.y)
+
+    def _is_segment_horizontal(self, wire: "Wire", seg_idx: int) -> bool:
+        """Check if segment at given index should be horizontal."""
+        first_horiz = self._get_first_segment_horizontal(wire)
+        return (seg_idx % 2 == 0) == first_horiz
+
     def update_component_position(self, pos: Point) -> None:
         """Update a component's position during drag."""
         # Handle wire corner dragging
@@ -261,40 +274,72 @@ class CircuitViewModel:
             wire_id, corner_idx = self.dragging_wire_corner
             for wire in self.circuit.wires:
                 if wire.id == wire_id:
-                    if 0 < corner_idx < len(wire.path):
-                        # Get adjacent points
+                    if 0 < corner_idx < len(wire.path) - 1:
+                        is_near_start = corner_idx == 1
+                        is_near_end = corner_idx == len(wire.path) - 2
                         prev_point = wire.path[corner_idx - 1]
-                        next_point = (
-                            wire.path[corner_idx + 1]
-                            if corner_idx + 1 < len(wire.path)
-                            else None
-                        )
+                        next_point = wire.path[corner_idx + 1]
 
-                        # Determine which axis to constrain based on previous segment
-                        # The segment before this corner determines the first constraint
-                        prev_is_horizontal = (
-                            abs(prev_point.y - wire.path[corner_idx].y) < 1
-                        )
-
-                        if prev_is_horizontal:
-                            # Horizontal segment: corner moves vertically
-                            # Keep x from previous, use new y
-                            wire.path[corner_idx].x = prev_point.x
-                            wire.path[corner_idx].y = pos.y
-                        else:
-                            # Vertical segment: corner moves horizontally
-                            # Keep y from previous, use new x
-                            wire.path[corner_idx].x = pos.x
-                            wire.path[corner_idx].y = prev_point.y
-
-                        # Update next segment to maintain orthogonality
-                        if next_point:
-                            if prev_is_horizontal:
-                                # Corner moved vertically, next is horizontal
-                                next_point.y = wire.path[corner_idx].y
+                        if is_near_start and is_near_end:
+                            # Only 3 points - L-shape between fixed endpoints
+                            dx = abs(pos.x - prev_point.x)
+                            dy = abs(pos.y - prev_point.y)
+                            if dx < dy:
+                                wire.path[corner_idx].x = prev_point.x
+                                wire.path[corner_idx].y = next_point.y
                             else:
-                                # Corner moved horizontally, next is vertical
-                                next_point.x = wire.path[corner_idx].x
+                                wire.path[corner_idx].y = prev_point.y
+                                wire.path[corner_idx].x = next_point.x
+                        elif is_near_end:
+                            # Near end: propagate changes backward
+                            # Corner constrained by fixed endpoint
+                            prev_seg_horiz = self._is_segment_horizontal(
+                                wire, corner_idx - 1
+                            )
+                            next_seg_horiz = not prev_seg_horiz
+
+                            if next_seg_horiz:
+                                # Corner shares Y with endpoint
+                                wire.path[corner_idx].y = next_point.y
+                                wire.path[corner_idx].x = pos.x
+                            else:
+                                # Corner shares X with endpoint
+                                wire.path[corner_idx].x = next_point.x
+                                wire.path[corner_idx].y = pos.y
+
+                            # Propagate backward from corner to start
+                            for i in range(corner_idx - 1, 0, -1):
+                                seg_horiz = self._is_segment_horizontal(wire, i)
+                                if seg_horiz:
+                                    # Horizontal: share Y with next point
+                                    wire.path[i].y = wire.path[i + 1].y
+                                else:
+                                    # Vertical: share X with next point
+                                    wire.path[i].x = wire.path[i + 1].x
+                        else:
+                            # Near start or middle: propagate forward
+                            prev_seg_horiz = self._is_segment_horizontal(
+                                wire, corner_idx - 1
+                            )
+
+                            if prev_seg_horiz:
+                                wire.path[corner_idx].y = prev_point.y
+                                wire.path[corner_idx].x = pos.x
+                            else:
+                                wire.path[corner_idx].x = prev_point.x
+                                wire.path[corner_idx].y = pos.y
+
+                            # Propagate forward from corner to end
+                            for i in range(corner_idx + 1, len(wire.path) - 1):
+                                seg_horiz = self._is_segment_horizontal(wire, i - 1)
+                                if seg_horiz:
+                                    # This point connects horiz to vert
+                                    # Share Y with previous
+                                    wire.path[i].y = wire.path[i - 1].y
+                                else:
+                                    # This point connects vert to horiz
+                                    # Share X with previous
+                                    wire.path[i].x = wire.path[i - 1].x
 
                         self._notify_change()
                     return
