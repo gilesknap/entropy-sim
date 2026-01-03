@@ -82,6 +82,19 @@ class CircuitViewModel:
 
     # === Wire Operations ===
 
+    def _snap_to_orthogonal(self, pos: Point, reference: Point) -> Point:
+        """Snap position to be orthogonal (horizontal or vertical) from reference."""
+        dx = abs(pos.x - reference.x)
+        dy = abs(pos.y - reference.y)
+
+        # Snap to the axis with larger displacement
+        if dx > dy:
+            # Horizontal - keep x, snap y to reference
+            return Point(x=pos.x, y=reference.y)
+        else:
+            # Vertical - keep y, snap x to reference
+            return Point(x=reference.x, y=pos.y)
+
     def start_wire(self, pos: Point) -> None:
         """Start drawing a new wire or add a segment."""
         nearest = self.circuit.find_nearest_connection_point(pos, self.SNAP_DISTANCE)
@@ -116,17 +129,24 @@ class CircuitViewModel:
 
     def _add_wire_corner(self, pos: Point) -> None:
         """Add a corner point to the wire being drawn."""
-        if not self.dragging_wire:
+        if not self.dragging_wire or not self.dragging_wire.path:
             return
+
+        # Snap to orthogonal from last point
+        last_point = self.dragging_wire.path[-1]
+        snapped_pos = self._snap_to_orthogonal(
+            pos, Point(x=last_point.x, y=last_point.y)
+        )
+
         # Add the corner point to the path
-        self.dragging_wire.path.append(WirePoint(x=pos.x, y=pos.y))
+        self.dragging_wire.path.append(WirePoint(x=snapped_pos.x, y=snapped_pos.y))
         self._notify_change()
 
     def _finish_wire_at_connection(
         self, nearest: tuple[UUID, "ConnectionPoint", "Battery | LED"]
     ) -> None:
         """Finish wire at a connection point."""
-        if not self.dragging_wire:
+        if not self.dragging_wire or not self.dragging_wire.path:
             return
 
         _obj_id, conn_point, _ = nearest
@@ -135,6 +155,19 @@ class CircuitViewModel:
         self.dragging_wire.end.position = end_pos
         self.dragging_wire.end_connected_to = conn_point.id
         conn_point.connected_to = self.dragging_wire.id
+
+        # Get last point in current path
+        last_point = self.dragging_wire.path[-1]
+
+        # Check if we need an intermediate corner to maintain orthogonality
+        dx = abs(end_pos.x - last_point.x)
+        dy = abs(end_pos.y - last_point.y)
+
+        # If not already aligned horizontally or vertically, add a corner
+        if dx > 1 and dy > 1:
+            # Add an L-shaped corner - first go horizontal, then vertical
+            corner = WirePoint(x=end_pos.x, y=last_point.y)
+            self.dragging_wire.path.append(corner)
 
         # Add final point to path
         self.dragging_wire.path.append(WirePoint(x=end_pos.x, y=end_pos.y))
@@ -145,7 +178,7 @@ class CircuitViewModel:
 
     def update_wire_end(self, pos: Point) -> None:
         """Update the preview end position of a wire being drawn."""
-        if not self.dragging_wire:
+        if not self.dragging_wire or not self.dragging_wire.path:
             return
 
         nearest = self.circuit.find_nearest_connection_point(pos, self.SNAP_DISTANCE)
@@ -154,7 +187,11 @@ class CircuitViewModel:
             _, conn_point, _ = nearest
             end_pos = Point(x=conn_point.position.x, y=conn_point.position.y)
         else:
-            end_pos = pos
+            # Snap to orthogonal from last path point
+            last_point = self.dragging_wire.path[-1]
+            end_pos = self._snap_to_orthogonal(
+                pos, Point(x=last_point.x, y=last_point.y)
+            )
 
         self.dragging_wire.end.position = end_pos
         self._notify_change()
@@ -225,8 +262,40 @@ class CircuitViewModel:
             for wire in self.circuit.wires:
                 if wire.id == wire_id:
                     if 0 < corner_idx < len(wire.path):
-                        wire.path[corner_idx].x = pos.x
-                        wire.path[corner_idx].y = pos.y
+                        # Get adjacent points
+                        prev_point = wire.path[corner_idx - 1]
+                        next_point = (
+                            wire.path[corner_idx + 1]
+                            if corner_idx + 1 < len(wire.path)
+                            else None
+                        )
+
+                        # Determine which axis to constrain based on previous segment
+                        # The segment before this corner determines the first constraint
+                        prev_is_horizontal = (
+                            abs(prev_point.y - wire.path[corner_idx].y) < 1
+                        )
+
+                        if prev_is_horizontal:
+                            # Horizontal segment: corner moves vertically
+                            # Keep x from previous, use new y
+                            wire.path[corner_idx].x = prev_point.x
+                            wire.path[corner_idx].y = pos.y
+                        else:
+                            # Vertical segment: corner moves horizontally
+                            # Keep y from previous, use new x
+                            wire.path[corner_idx].x = pos.x
+                            wire.path[corner_idx].y = prev_point.y
+
+                        # Update next segment to maintain orthogonality
+                        if next_point:
+                            if prev_is_horizontal:
+                                # Corner moved vertically, next is horizontal
+                                next_point.y = wire.path[corner_idx].y
+                            else:
+                                # Corner moved horizontally, next is vertical
+                                next_point.x = wire.path[corner_idx].x
+
                         self._notify_change()
                     return
             return
@@ -258,7 +327,7 @@ class CircuitViewModel:
         self.dragging_wire_corner = None
 
     def _update_connected_wires(self, component: Battery | LED) -> None:
-        """Update wires connected to a component."""
+        """Update wires connected to a component, maintaining orthogonal segments."""
         conn_points = []
         if isinstance(component, Battery):
             conn_points = [component.positive, component.negative]
@@ -275,6 +344,37 @@ class CircuitViewModel:
                     if wire.path:
                         wire.path[0].x = conn_point.position.x
                         wire.path[0].y = conn_point.position.y
+
+                        # Adjust second point to maintain orthogonality
+                        if len(wire.path) > 1:
+                            second_point = wire.path[1]
+
+                            # Orientation from third point (if exists)
+                            if len(wire.path) > 2:
+                                third_point = wire.path[2]
+                                # Check if segment 2->3 is horizontal or vertical
+                                segment_23_is_horizontal = abs(
+                                    third_point.x - second_point.x
+                                ) > abs(third_point.y - second_point.y)
+
+                                if segment_23_is_horizontal:
+                                    # 2->3 horizontal, so 1->2 vertical
+                                    second_point.x = wire.path[0].x
+                                else:
+                                    # 2->3 vertical, so 1->2 horizontal
+                                    second_point.y = wire.path[0].y
+                            else:
+                                # Only 2 points - use larger displacement
+                                dx = abs(second_point.x - wire.path[0].x)
+                                dy = abs(second_point.y - wire.path[0].y)
+
+                                if dx > dy:
+                                    # Make horizontal
+                                    second_point.y = wire.path[0].y
+                                else:
+                                    # Make vertical
+                                    second_point.x = wire.path[0].x
+
                 elif wire.end_connected_to == conn_point.id:
                     wire.end.position = Point(
                         x=conn_point.position.x, y=conn_point.position.y
@@ -283,6 +383,37 @@ class CircuitViewModel:
                     if wire.path:
                         wire.path[-1].x = conn_point.position.x
                         wire.path[-1].y = conn_point.position.y
+
+                        # Adjust second-to-last point to maintain orthogonality
+                        if len(wire.path) > 1:
+                            second_last_point = wire.path[-2]
+
+                            # Orientation from third-to-last point
+                            if len(wire.path) > 2:
+                                third_last_point = wire.path[-3]
+                                # Check if segment (n-3)->(n-2) is horizontal
+                                # or vertical
+                                segment_is_horizontal = abs(
+                                    second_last_point.x - third_last_point.x
+                                ) > abs(second_last_point.y - third_last_point.y)
+
+                                if segment_is_horizontal:
+                                    # (n-3)->(n-2) horizontal, so vertical
+                                    second_last_point.x = wire.path[-1].x
+                                else:
+                                    # (n-3)->(n-2) vertical, so horizontal
+                                    second_last_point.y = wire.path[-1].y
+                            else:
+                                # Only 2 points - use larger displacement
+                                dx = abs(wire.path[-1].x - second_last_point.x)
+                                dy = abs(wire.path[-1].y - second_last_point.y)
+
+                                if dx > dy:
+                                    # Make horizontal
+                                    second_last_point.y = wire.path[-1].y
+                                else:
+                                    # Make vertical
+                                    second_last_point.x = wire.path[-1].x
 
     def _point_in_rect(
         self, point: Point, center: Point, width: float, height: float
