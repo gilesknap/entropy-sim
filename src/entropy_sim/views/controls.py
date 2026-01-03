@@ -14,7 +14,7 @@ class ControlsView:
 
     def render(self) -> None:
         """Render the control buttons."""
-        with ui.row().classes("mt-4 gap-2"):
+        with ui.row().classes("mt-4 pb-2 gap-2 flex-shrink-0"):
             ui.button("Clear All", on_click=self._on_clear).props("color=negative")
             ui.button("Save Circuit", on_click=self._on_save).props("color=primary")
             ui.button("Load Circuit", on_click=self._on_load).props("color=secondary")

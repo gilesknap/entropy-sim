@@ -1,0 +1,11 @@
+<!-- Battery palette icon (mini version) -->
+<svg width="80" height="40" viewBox="-40 -20 80 40">
+    <!-- 9V Battery body -->
+    <rect x="-25" y="-18" width="50" height="36" rx="2"
+          fill="#2c3e50" stroke="#1a252f" stroke-width="1.5"/>
+    <!-- Label area -->
+    <rect x="-20" y="-13" width="40" height="10" rx="1"
+          fill="#ecf0f1"/>
+    <text x="0" y="-5" text-anchor="middle" font-size="8"
+          font-weight="bold" fill="#2c3e50">9V</text>
+</svg>

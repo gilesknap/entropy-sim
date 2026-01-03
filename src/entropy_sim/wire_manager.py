@@ -3,7 +3,17 @@
 from collections.abc import Callable
 from uuid import UUID
 
-from .models import LED, Battery, Circuit, ConnectionPoint, Point, Wire, WirePoint
+from .models import (
+    LED,
+    Battery,
+    Circuit,
+    CircuitObject,
+    ConnectionPoint,
+    LiIonCell,
+    Point,
+    Wire,
+    WirePoint,
+)
 
 
 class WireManager:
@@ -66,7 +76,15 @@ class WireManager:
         Returns True if wire drawing was completed (finished at connection).
         Returns False if wire drawing is still in progress.
         """
-        nearest = self._circuit.find_nearest_connection_point(pos, self.SNAP_DISTANCE)
+        nearest_result = self._circuit.find_nearest_connection_point(
+            pos, self.SNAP_DISTANCE
+        )
+        # Filter out wires - we only want battery/LED connections
+        nearest: tuple[UUID, ConnectionPoint, Battery | LED] | None = None
+        if nearest_result:
+            conn_id, conn_point, component = nearest_result
+            if not isinstance(component, Wire):
+                nearest = (conn_id, conn_point, component)  # type: ignore[assignment]
 
         # If already drawing a wire, this click adds a corner or finishes
         if self.dragging_wire:
@@ -286,10 +304,12 @@ class WireManager:
 
     # === Component Connection Updates ===
 
-    def update_connected_wires(self, component: Battery | LED) -> None:
+    def update_connected_wires(self, component: CircuitObject) -> None:
         """Update wires connected to a component, maintaining orthogonal segments."""
         conn_points: list[ConnectionPoint] = []
         if isinstance(component, Battery):
+            conn_points = [component.positive, component.negative]
+        elif isinstance(component, LiIonCell):
             conn_points = [component.positive, component.negative]
         elif isinstance(component, LED):
             conn_points = [component.anode, component.cathode]

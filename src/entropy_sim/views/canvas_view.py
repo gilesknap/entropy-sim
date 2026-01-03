@@ -33,7 +33,14 @@ class CircuitCanvasView:
 
     def render(self) -> None:
         """Render the complete circuit canvas UI."""
-        with ui.column().classes("w-full h-screen p-4").style("overflow: hidden;"):
+        with (
+            ui.column()
+            .classes("w-full p-4")
+            .style(
+                "height: 100vh; max-height: 100vh; overflow: hidden; "
+                "box-sizing: border-box;"
+            )
+        ):
             ui.label("Entropy Simulation - Circuit Builder").classes(
                 "text-2xl font-bold mb-4 flex-shrink-0"
             )
@@ -86,7 +93,16 @@ class CircuitCanvasView:
         if self.interactive_image:
             with self.interactive_image:
                 with ui.context_menu() as self.context_menu:
-                    self.context_menu_item = ui.menu_item(
+                    self.rotate_cw_item = ui.menu_item(
+                        "Rotate 90° CW",
+                        on_click=lambda: self._rotate_context_target(90),
+                    )
+                    self.rotate_ccw_item = ui.menu_item(
+                        "Rotate 90° CCW",
+                        on_click=lambda: self._rotate_context_target(-90),
+                    )
+                    ui.separator()
+                    self.delete_menu_item = ui.menu_item(
                         "Delete", on_click=self._delete_context_target
                     )
 
@@ -110,12 +126,17 @@ class CircuitCanvasView:
 
         obj = self.viewmodel.get_object_at(pos)
         if obj:
-            obj_type, obj_id = obj
+            obj_type, obj_id, circuit_obj = obj
             self._context_menu_target = (obj_type, obj_id)
-            self._context_menu_type_name = obj_type.capitalize()
+            self._context_menu_type_name = circuit_obj.display_name
+            # Show/hide rotation options based on object's rotatable property
+            self.rotate_cw_item.set_visibility(circuit_obj.rotatable)
+            self.rotate_ccw_item.set_visibility(circuit_obj.rotatable)
         else:
             self._context_menu_target = None
             self._context_menu_type_name = ""
+            self.rotate_cw_item.set_visibility(False)
+            self.rotate_ccw_item.set_visibility(False)
 
     def _on_mouse_event(self, e: MouseEventArguments) -> None:
         """Handle mouse events on canvas."""
@@ -128,6 +149,14 @@ class CircuitCanvasView:
             self._handle_mouse_move(pos)
         elif event_type == "mouseup":
             self._handle_mouse_up(pos)
+
+    def _rotate_context_target(self, degrees: float) -> None:
+        """Rotate the object that was right-clicked."""
+        if self._context_menu_target:
+            obj_type, obj_id = self._context_menu_target
+            self.viewmodel.rotate_object(obj_type, obj_id, degrees)
+            # Clear any drag state that might have been set
+            self.viewmodel.clear_drag_state()
 
     def _delete_context_target(self) -> None:
         """Delete the object targeted by context menu."""

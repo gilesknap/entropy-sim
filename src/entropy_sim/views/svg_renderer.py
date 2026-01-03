@@ -1,5 +1,7 @@
 """SVG rendering for circuit components."""
 
+from importlib.resources import files
+
 from ..models import Circuit
 
 
@@ -17,6 +19,29 @@ class SVGRenderer:
         # Track canvas dimensions (coordinate system)
         self.width = self.DEFAULT_WIDTH
         self.height = self.DEFAULT_HEIGHT
+        # Load component SVG templates
+        self._load_component_templates()
+
+    def _load_component_templates(self) -> None:
+        """Load SVG component templates from asset files."""
+        import entropy_sim.assets.components as components_pkg
+
+        self.battery_template = (
+            files(components_pkg).joinpath("battery.svg").read_text()
+        )
+        self.battery_mini_template = (
+            files(components_pkg).joinpath("battery_mini.svg").read_text()
+        )
+        self.liion_cell_template = (
+            files(components_pkg).joinpath("liion_cell.svg").read_text()
+        )
+        self.liion_cell_mini_template = (
+            files(components_pkg).joinpath("liion_cell_mini.svg").read_text()
+        )
+        self.led_template = files(components_pkg).joinpath("led.svg").read_text()
+        self.led_mini_template = (
+            files(components_pkg).joinpath("led_mini.svg").read_text()
+        )
 
     def calculate_canvas_size(self, circuit: Circuit) -> tuple[int, int]:
         """Calculate canvas size based on content and defaults."""
@@ -58,6 +83,9 @@ class SVGRenderer:
             <!-- Batteries -->
             {self._render_batteries(circuit)}
 
+            <!-- Li-Ion Cells -->
+            {self._render_liion_cells(circuit)}
+
             <!-- LEDs -->
             {self._render_leds(circuit)}
 
@@ -68,18 +96,42 @@ class SVGRenderer:
 
     def _render_batteries(self, circuit: Circuit) -> str:
         """Generate SVG for all batteries."""
+        from ..models import Battery
+
         svg = ""
-        for battery in circuit.batteries:
-            svg += self.get_battery_svg(battery.position.x, battery.position.y)
+        for component in circuit.components:
+            if isinstance(component, Battery):
+                svg += self.get_battery_svg(
+                    component.position.x, component.position.y, component.rotation
+                )
+        return svg
+
+    def _render_liion_cells(self, circuit: Circuit) -> str:
+        """Generate SVG for all Li-Ion cells."""
+        from ..models import LiIonCell
+
+        svg = ""
+        for component in circuit.components:
+            if isinstance(component, LiIonCell):
+                svg += self.get_liion_cell_svg(
+                    component.position.x, component.position.y, component.rotation
+                )
         return svg
 
     def _render_leds(self, circuit: Circuit) -> str:
         """Generate SVG for all LEDs."""
+        from ..models import LED
+
         svg = ""
-        for led in circuit.leds:
-            svg += self.get_led_svg(
-                led.position.x, led.position.y, led.color, led.is_on
-            )
+        for component in circuit.components:
+            if isinstance(component, LED):
+                svg += self.get_led_svg(
+                    component.position.x,
+                    component.position.y,
+                    component.color,
+                    component.is_on,
+                    component.rotation,
+                )
         return svg
 
     def _render_wires(self, circuit: Circuit) -> str:
@@ -124,39 +176,91 @@ class SVGRenderer:
         """Generate SVG for connection points."""
         svg = ""
         for _obj_id, conn_point, _obj in circuit.get_all_connection_points():
-            color = "#22c55e" if conn_point.connected_to else "#3b82f6"
+            # Determine color based on polarity
             if conn_point.label == "positive":
-                color = "#ef4444" if not conn_point.connected_to else "#22c55e"
+                stroke_color = "#ef4444"  # Red for positive
             elif conn_point.label == "negative":
-                color = "#1e40af" if not conn_point.connected_to else "#22c55e"
+                stroke_color = "#000000"  # Black for negative
+            else:
+                stroke_color = "#3b82f6"  # Blue for neutral/wire endpoints
+
+            # Connected: solid fill with white stroke, Unconnected: hollow
+            # with color stroke
+            if conn_point.connected_to:
+                fill = stroke_color
+                stroke = "#fff"
+            else:
+                fill = "none"
+                stroke = stroke_color
 
             svg += f"""
             <circle cx="{conn_point.position.x}" cy="{conn_point.position.y}"
-                    r="6" fill="{color}" stroke="#fff" stroke-width="2"/>
+                    r="6" fill="{fill}" stroke="{stroke}" stroke-width="2"/>
             """
+
+        # Also render wire endpoint anchors (start and end)
+        # Create a lookup map for connection point colors
+        conn_point_colors = {}
+        for _obj_id, conn_point, _obj in circuit.get_all_connection_points():
+            if conn_point.label == "positive":
+                conn_point_colors[conn_point.id] = "#ef4444"  # Red
+            elif conn_point.label == "negative":
+                conn_point_colors[conn_point.id] = "#000000"  # Black
+            else:
+                conn_point_colors[conn_point.id] = "#3b82f6"  # Blue
+
+        for wire in circuit.wires:
+            # Start anchor - use color fill with white stroke when connected
+            if wire.start_connected_to is not None:
+                start_color = conn_point_colors.get(wire.start_connected_to, "#3b82f6")
+                start_fill = start_color
+                start_stroke = "#fff"
+            else:
+                start_color = "#3b82f6"
+                start_fill = "none"
+                start_stroke = start_color
+            svg += f"""
+            <circle cx="{wire.start.position.x}" cy="{wire.start.position.y}"
+                    r="6" fill="{start_fill}" stroke="{start_stroke}" stroke-width="2"/>
+            """
+
+            # End anchor - use color fill with white stroke when connected
+            if wire.end_connected_to is not None:
+                end_color = conn_point_colors.get(wire.end_connected_to, "#3b82f6")
+                end_fill = end_color
+                end_stroke = "#fff"
+            else:
+                end_color = "#3b82f6"
+                end_fill = "none"
+                end_stroke = end_color
+            svg += f"""
+            <circle cx="{wire.end.position.x}" cy="{wire.end.position.y}"
+                    r="6" fill="{end_fill}" stroke="{end_stroke}" stroke-width="2"/>
+            """
+
         return svg
 
-    def get_battery_svg(self, x: float, y: float, mini: bool = False) -> str:
-        """Generate SVG for a battery."""
+    def get_battery_svg(
+        self, x: float, y: float, rotation: float = 0.0, mini: bool = False
+    ) -> str:
+        """Generate SVG for a battery (Fritzing-style 9V battery)."""
         if mini:
-            return """
-            <svg width="80" height="40" viewBox="-40 -20 80 40">
-                <rect x="-35" y="-15" width="70" height="30" rx="3"
-                      fill="#fbbf24" stroke="#92400e" stroke-width="2"/>
-                <rect x="35" y="-8" width="5" height="16" fill="#92400e"/>
-                <text x="0" y="5" text-anchor="middle" font-size="12"
-                      fill="#92400e">+  -</text>
-            </svg>
-            """
+            return self.battery_mini_template
         return f"""
-        <g transform="translate({x}, {y})">
-            <rect x="-35" y="-15" width="70" height="30" rx="3"
-                  fill="#fbbf24" stroke="#92400e" stroke-width="2"/>
-            <rect x="35" y="-8" width="5" height="16" fill="#92400e"/>
-            <text x="-20" y="5" text-anchor="middle" font-size="14"
-                  font-weight="bold" fill="#92400e">+</text>
-            <text x="20" y="5" text-anchor="middle" font-size="14"
-                  font-weight="bold" fill="#92400e">-</text>
+        <g transform="translate({x}, {y}) rotate({rotation})">
+            {self.battery_template}
+        </g>
+        """
+
+    def get_liion_cell_svg(
+        self, x: float, y: float, rotation: float = 0.0, mini: bool = False
+    ) -> str:
+        """Generate SVG for a Li-Ion cell (cylindrical battery)."""
+        if mini:
+            return self.liion_cell_mini_template
+        return f"""
+        <g transform="translate({x}, {y}) rotate({rotation})">
+            {self.liion_cell_template}
         </g>
         """
 
@@ -166,42 +270,25 @@ class SVGRenderer:
         y: float,
         color: str = "red",
         is_on: bool = False,
+        rotation: float = 0.0,
         mini: bool = False,
     ) -> str:
-        """Generate SVG for an LED."""
+        """Generate SVG for an LED (Fritzing-style realistic LED)."""
         led_color = self._get_led_color(color, is_on)
-        glow = 'filter="url(#glow)"' if is_on else ""
+        led_body_color = led_color if is_on else self._get_led_off_body(color)
+        glow = 'filter="url(#ledGlow)"' if is_on else ""
 
         if mini:
-            return f"""
-            <svg width="30" height="60" viewBox="-15 -30 30 60">
-                <polygon points="0,-20 12,10 -12,10" fill="{led_color}"
-                         stroke="#333" stroke-width="2"/>
-                <line x1="-12" y1="10" x2="12" y2="10"
-                      stroke="#333" stroke-width="3"/>
-                <line x1="0" y1="10" x2="0" y2="25"
-                      stroke="#333" stroke-width="2"/>
-            </svg>
-            """
+            return self.led_mini_template.format(body_color=led_body_color)
+
+        # Load template and substitute color placeholders
+        svg_content = self.led_template.format(
+            led_color=led_color, body_color=led_body_color, glow=glow
+        )
+
         return f"""
-        <g transform="translate({x}, {y})">
-            <defs>
-                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-                    <feMerge>
-                        <feMergeNode in="coloredBlur"/>
-                        <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
-                </filter>
-            </defs>
-            <polygon points="0,-20 15,15 -15,15" fill="{led_color}"
-                     stroke="#333" stroke-width="2" {glow}/>
-            <line x1="-15" y1="15" x2="15" y2="15"
-                  stroke="#333" stroke-width="3"/>
-            <line x1="0" y1="-20" x2="0" y2="-30"
-                  stroke="#333" stroke-width="2"/>
-            <line x1="0" y1="15" x2="0" y2="30"
-                  stroke="#333" stroke-width="2"/>
+        <g transform="translate({x}, {y}) rotate({rotation})">
+            {svg_content}
         </g>
         """
 
@@ -226,3 +313,13 @@ class SVGRenderer:
         }
         on_color, off_color = colors.get(color, colors["red"])
         return on_color if is_on else off_color
+
+    def _get_led_off_body(self, color: str) -> str:
+        """Get the body/dome color for an LED when off (more translucent)."""
+        body_colors = {
+            "red": "#ff9999",
+            "green": "#99ff99",
+            "blue": "#9999ff",
+            "yellow": "#ffff99",
+        }
+        return body_colors.get(color, body_colors["red"])

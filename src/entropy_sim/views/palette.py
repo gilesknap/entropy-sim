@@ -32,6 +32,7 @@ class PaletteView:
             ui.label("Components").classes("text-lg font-bold mb-2")
 
             self._render_battery_item()
+            self._render_liion_cell_item()
             self._render_led_item()
             self._render_wire_item()
 
@@ -50,8 +51,17 @@ class PaletteView:
             ui.html(
                 self.renderer.get_battery_svg(0, 0, mini=True), sanitize=False
             ).classes("w-full")
-            ui.label("Battery").classes("text-center text-sm")
+            ui.label("9V Battery").classes("text-center text-sm")
         card.on("click", lambda: self._on_item_click("battery"))
+
+    def _render_liion_cell_item(self) -> None:
+        """Render Li-Ion cell palette item."""
+        with ui.card().classes("p-2 mb-2 cursor-pointer hover:bg-gray-100") as card:
+            ui.html(
+                self.renderer.get_liion_cell_svg(0, 0, mini=True), sanitize=False
+            ).classes("w-full")
+            ui.label("Li-Ion Cell").classes("text-center text-sm")
+        card.on("click", lambda: self._on_item_click("liion_cell"))
 
     def _render_led_item(self) -> None:
         """Render LED palette item."""

@@ -1,0 +1,14 @@
+<!-- LED palette icon (mini version) -->
+<svg width="30" height="60" viewBox="-15 -30 30 60">
+    <!-- LED dome top -->
+    <ellipse cx="0" cy="-10" rx="10" ry="12"
+             fill="{body_color}" stroke="#333" stroke-width="1.5"/>
+    <!-- LED body base -->
+    <rect x="-10" y="-2" width="20" height="8"
+          fill="{body_color}" stroke="#333" stroke-width="1.5"/>
+    <!-- Leads -->
+    <line x1="-5" y1="6" x2="-5" y2="25"
+          stroke="#888" stroke-width="2"/>
+    <line x1="5" y1="6" x2="5" y2="25"
+          stroke="#888" stroke-width="2"/>
+</svg>

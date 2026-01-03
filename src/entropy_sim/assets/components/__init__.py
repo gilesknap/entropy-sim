@@ -1,0 +1,1 @@
+"""Component SVG assets."""
