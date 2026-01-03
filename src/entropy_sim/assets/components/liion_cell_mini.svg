@@ -1,0 +1,13 @@
+<!-- Lithium Ion Cell Mini Icon (for palette, horizontal) -->
+<svg width="60" height="20" viewBox="-30 -10 60 20">
+    <rect x="-12" y="-4" width="24" height="8" rx="1"
+          fill="#34495e" stroke="#2c3e50" stroke-width="1"/>
+    <rect x="12" y="-2.5" width="2" height="5" rx="0.5"
+          fill="#c0392b" stroke="#a93226" stroke-width="0.5"/>
+    <rect x="-14" y="-4" width="2" height="8"
+          fill="#7f8c8d" stroke="#5a6668" stroke-width="0.5"/>
+    <text x="8" y="2" text-anchor="middle" font-size="6"
+          fill="#c0392b">+</text>
+    <text x="-10" y="2" text-anchor="middle" font-size="6"
+          fill="#7f8c8d">−</text>
+</svg>

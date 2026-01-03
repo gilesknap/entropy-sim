@@ -11,6 +11,7 @@ class ObjectType(str, Enum):
     """Types of circuit objects."""
 
     BATTERY = "battery"
+    LIION_CELL = "liion_cell"
     LED = "led"
     WIRE = "wire"
 
@@ -99,6 +100,55 @@ class Battery(CircuitObject):
         )
 
 
+class LiIonCell(CircuitObject):
+    """A cylindrical Lithium Ion battery cell with button positive terminal."""
+
+    object_type: Literal[ObjectType.LIION_CELL] = ObjectType.LIION_CELL
+    voltage: float = 3.7  # Volts (typical Li-Ion)
+    size_x: float = 30.0  # Cell is 60 wide
+    size_y: float = 10.0  # Cell is 20 tall
+    positive: ConnectionPoint = Field(
+        default_factory=lambda: ConnectionPoint(label="positive")
+    )
+    negative: ConnectionPoint = Field(
+        default_factory=lambda: ConnectionPoint(label="negative")
+    )
+
+    def model_post_init(self, __context: object) -> None:
+        """Update connection point positions relative to cell position."""
+        self.update_connection_positions()
+
+    def update_connection_positions(self) -> None:
+        """Update connection points based on cell position and rotation."""
+        import math
+
+        # Cylindrical cell horizontal with button terminal at right (positive)
+        # and flat terminal at left (negative)
+        # Positive at (35, 0), Negative at (-33, 0)
+        # Apply rotation around the center
+        angle = math.radians(self.rotation)
+        cos_a = math.cos(angle)
+        sin_a = math.sin(angle)
+
+        # Positive terminal at right (35, 0)
+        pos_local_x = 35
+        pos_local_y = 0
+        pos_x = pos_local_x * cos_a - pos_local_y * sin_a
+        pos_y = pos_local_x * sin_a + pos_local_y * cos_a
+        self.positive.position = Point(
+            x=self.position.x + pos_x, y=self.position.y + pos_y
+        )
+
+        # Negative terminal at left (-33, 0)
+        neg_local_x = -33
+        neg_local_y = 0
+        neg_x = neg_local_x * cos_a - neg_local_y * sin_a
+        neg_y = neg_local_x * sin_a + neg_local_y * cos_a
+        self.negative.position = Point(
+            x=self.position.x + neg_x, y=self.position.y + neg_y
+        )
+
+
 class LED(CircuitObject):
     """An LED with anode and cathode terminals."""
 
@@ -175,7 +225,7 @@ class Wire(CircuitObject):
 
 
 # Type alias for any component
-Component = Battery | LED | Wire
+Component = Battery | LiIonCell | LED | Wire
 
 
 class Circuit(BaseModel):
@@ -184,13 +234,14 @@ class Circuit(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     name: str = "Untitled Circuit"
     batteries: list[Battery] = Field(default_factory=list)
+    liion_cells: list[LiIonCell] = Field(default_factory=list)
     leds: list[LED] = Field(default_factory=list)
     wires: list[Wire] = Field(default_factory=list)
 
     @property
     def all_objects(self) -> list[CircuitObject]:
         """Get all circuit objects as a single list."""
-        return [*self.batteries, *self.leds, *self.wires]
+        return [*self.batteries, *self.liion_cells, *self.leds, *self.wires]
 
     def get_bounds(self) -> tuple[float, float, float, float]:
         """Get bounding box of all components (min_x, min_y, max_x, max_y)."""
@@ -218,6 +269,13 @@ class Circuit(BaseModel):
         self.batteries.append(battery)
         return battery
 
+    def add_liion_cell(self, position: Point | None = None) -> LiIonCell:
+        """Add a new Li-Ion cell to the circuit."""
+        cell = LiIonCell(position=position or Point())
+        cell.update_connection_positions()
+        self.liion_cells.append(cell)
+        return cell
+
     def add_led(self, position: Point | None = None, color: str = "red") -> LED:
         """Add a new LED to the circuit."""
         led = LED(position=position or Point(), color=color)
@@ -239,6 +297,9 @@ class Circuit(BaseModel):
         for battery in self.batteries:
             points.append((battery.id, battery.positive, battery))
             points.append((battery.id, battery.negative, battery))
+        for cell in self.liion_cells:
+            points.append((cell.id, cell.positive, cell))
+            points.append((cell.id, cell.negative, cell))
         for led in self.leds:
             points.append((led.id, led.anode, led))
             points.append((led.id, led.cathode, led))
@@ -266,6 +327,10 @@ class Circuit(BaseModel):
         for i, battery in enumerate(self.batteries):
             if battery.id == component_id:
                 self.batteries.pop(i)
+                return True
+        for i, cell in enumerate(self.liion_cells):
+            if cell.id == component_id:
+                self.liion_cells.pop(i)
                 return True
         for i, led in enumerate(self.leds):
             if led.id == component_id:

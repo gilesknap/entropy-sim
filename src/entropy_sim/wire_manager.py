@@ -3,7 +3,16 @@
 from collections.abc import Callable
 from uuid import UUID
 
-from .models import LED, Battery, Circuit, ConnectionPoint, Point, Wire, WirePoint
+from .models import (
+    LED,
+    Battery,
+    Circuit,
+    ConnectionPoint,
+    LiIonCell,
+    Point,
+    Wire,
+    WirePoint,
+)
 
 
 class WireManager:
@@ -294,10 +303,12 @@ class WireManager:
 
     # === Component Connection Updates ===
 
-    def update_connected_wires(self, component: Battery | LED) -> None:
+    def update_connected_wires(self, component: Battery | LiIonCell | LED) -> None:
         """Update wires connected to a component, maintaining orthogonal segments."""
         conn_points: list[ConnectionPoint] = []
         if isinstance(component, Battery):
+            conn_points = [component.positive, component.negative]
+        elif isinstance(component, LiIonCell):
             conn_points = [component.positive, component.negative]
         elif isinstance(component, LED):
             conn_points = [component.anode, component.cathode]

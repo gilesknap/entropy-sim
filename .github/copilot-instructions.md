@@ -20,10 +20,11 @@ The project follows the **MVVM (Model-View-ViewModel)** pattern:
 - `Point`: 2D coordinate on canvas
 - `ConnectionPoint`: Terminal on a component (with position and connection state)
 - `CircuitObject`: Base class for circuit components
-- `Battery`: Power source with positive/negative terminals
+- `Battery`: 9V battery power source with positive/negative terminals at top
+- `LiIonCell`: Cylindrical lithium-ion battery (3.7V) with button positive terminal at top, flat negative at bottom
 - `LED`: Light-emitting diode with anode/cathode terminals
 - `Wire`: Connection between components with path routing
-- `Circuit`: Collection of all components (batteries, LEDs, wires)
+- `Circuit`: Collection of all components (batteries, liion_cells, LEDs, wires)
 
 All models use **Pydantic** for validation and JSON serialization.
 
@@ -42,7 +43,7 @@ All models use **Pydantic** for validation and JSON serialization.
   - Custom CSS for full-height responsive layout
 - `canvas_view.py`: Main view composing all UI components
   - Right-click context menu for component actions (rotate, delete)
-- `palette.py`: Component palette with Battery, LED, Wire selection
+- `palette.py`: Component palette with Battery, Li-Ion Cell, LED, Wire selection
 - `controls.py`: Clear, Save, Load buttons
 - `svg_renderer.py`: SVG generation loading templates from asset files
 
@@ -56,7 +57,7 @@ All models use **Pydantic** for validation and JSON serialization.
 - `components/`: SVG files for electronic components
   - **Source**: Custom-created Fritzing-style realistic component graphics
   - **Can be replaced with**: Actual Fritzing parts from [fritzing/fritzing-parts](https://github.com/fritzing/fritzing-parts) repo
-  - Current components: `battery.svg`, `battery_mini.svg`, `led.svg`, `led_mini.svg`
+  - Current components: `battery.svg`, `battery_mini.svg`, `liion_cell.svg`, `liion_cell_mini.svg`, `led.svg`, `led_mini.svg`
   - Loaded using `importlib.resources` for proper package bundling
   - LED SVG uses template strings (`{led_color}`, `{body_color}`, `{glow}`) for dynamic coloring
 

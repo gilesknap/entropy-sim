@@ -32,6 +32,12 @@ class SVGRenderer:
         self.battery_mini_template = (
             files(components_pkg).joinpath("battery_mini.svg").read_text()
         )
+        self.liion_cell_template = (
+            files(components_pkg).joinpath("liion_cell.svg").read_text()
+        )
+        self.liion_cell_mini_template = (
+            files(components_pkg).joinpath("liion_cell_mini.svg").read_text()
+        )
         self.led_template = files(components_pkg).joinpath("led.svg").read_text()
         self.led_mini_template = (
             files(components_pkg).joinpath("led_mini.svg").read_text()
@@ -77,6 +83,9 @@ class SVGRenderer:
             <!-- Batteries -->
             {self._render_batteries(circuit)}
 
+            <!-- Li-Ion Cells -->
+            {self._render_liion_cells(circuit)}
+
             <!-- LEDs -->
             {self._render_leds(circuit)}
 
@@ -91,6 +100,15 @@ class SVGRenderer:
         for battery in circuit.batteries:
             svg += self.get_battery_svg(
                 battery.position.x, battery.position.y, battery.rotation
+            )
+        return svg
+
+    def _render_liion_cells(self, circuit: Circuit) -> str:
+        """Generate SVG for all Li-Ion cells."""
+        svg = ""
+        for cell in circuit.liion_cells:
+            svg += self.get_liion_cell_svg(
+                cell.position.x, cell.position.y, cell.rotation
             )
         return svg
 
@@ -153,15 +171,18 @@ class SVGRenderer:
             else:
                 stroke_color = "#3b82f6"  # Blue for neutral/wire endpoints
 
-            # Connected: solid fill, Unconnected: hollow (no fill)
+            # Connected: solid fill with white stroke, Unconnected: hollow
+            # with color stroke
             if conn_point.connected_to:
                 fill = stroke_color
+                stroke = "#fff"
             else:
                 fill = "none"
+                stroke = stroke_color
 
             svg += f"""
             <circle cx="{conn_point.position.x}" cy="{conn_point.position.y}"
-                    r="6" fill="{fill}" stroke="{stroke_color}" stroke-width="2"/>
+                    r="6" fill="{fill}" stroke="{stroke}" stroke-width="2"/>
             """
 
         # Also render wire endpoint anchors (start and end)
@@ -215,6 +236,18 @@ class SVGRenderer:
         return f"""
         <g transform="translate({x}, {y}) rotate({rotation})">
             {self.battery_template}
+        </g>
+        """
+
+    def get_liion_cell_svg(
+        self, x: float, y: float, rotation: float = 0.0, mini: bool = False
+    ) -> str:
+        """Generate SVG for a Li-Ion cell (cylindrical battery)."""
+        if mini:
+            return self.liion_cell_mini_template
+        return f"""
+        <g transform="translate({x}, {y}) rotate({rotation})">
+            {self.liion_cell_template}
         </g>
         """
 
