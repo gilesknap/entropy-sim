@@ -9,6 +9,20 @@ from .canvas_view import CircuitCanvasView
 def index() -> None:
     """Main page for the circuit builder."""
     ui.dark_mode(False)
+    # Remove default margins and ensure no overflow on body
+    ui.add_head_html("""
+        <style>
+            html, body {
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                height: 100%;
+            }
+            .nicegui-content {
+                height: 100%;
+            }
+        </style>
+    """)
     canvas = CircuitCanvasView()
     canvas.render()
 

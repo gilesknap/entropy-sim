@@ -33,7 +33,14 @@ class CircuitCanvasView:
 
     def render(self) -> None:
         """Render the complete circuit canvas UI."""
-        with ui.column().classes("w-full h-screen p-4").style("overflow: hidden;"):
+        with (
+            ui.column()
+            .classes("w-full p-4")
+            .style(
+                "height: 100vh; max-height: 100vh; overflow: hidden; "
+                "box-sizing: border-box;"
+            )
+        ):
             ui.label("Entropy Simulation - Circuit Builder").classes(
                 "text-2xl font-bold mb-4 flex-shrink-0"
             )
