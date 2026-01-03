@@ -1,6 +1,7 @@
 """Main canvas view that composes all circuit UI components."""
 
 import base64
+from uuid import UUID
 
 from nicegui import ui
 from nicegui.events import MouseEventArguments
@@ -77,6 +78,41 @@ class CircuitCanvasView:
                 .style(f"width: {canvas_w}px; height: {canvas_h}px;")
             )
 
+        # Context menu state
+        self._context_menu_target: tuple[str, UUID] | None = None
+        self._context_menu_type_name: str = ""
+
+        # Create context menu attached to interactive image
+        if self.interactive_image:
+            with self.interactive_image:
+                with ui.context_menu() as self.context_menu:
+                    self.context_menu_item = ui.menu_item(
+                        "Delete", on_click=self._delete_context_target
+                    )
+
+            # Handle right-click to capture what object was clicked
+            self.interactive_image.on(
+                "contextmenu",
+                self._on_right_click,
+                ["offsetX", "offsetY"],
+            )
+
+    def _on_right_click(self, e: dict) -> None:  # type: ignore[type-arg]
+        """Handle right-click on canvas to determine target object."""
+        args = e.args if hasattr(e, "args") else e
+        x = args.get("offsetX", 0)
+        y = args.get("offsetY", 0)
+        pos = Point(x=x, y=y)
+
+        obj = self.viewmodel.get_object_at(pos)
+        if obj:
+            obj_type, obj_id = obj
+            self._context_menu_target = (obj_type, obj_id)
+            self._context_menu_type_name = obj_type.capitalize()
+        else:
+            self._context_menu_target = None
+            self._context_menu_type_name = ""
+
     def _on_mouse_event(self, e: MouseEventArguments) -> None:
         """Handle mouse events on canvas."""
         pos = Point(x=e.image_x, y=e.image_y)
@@ -88,6 +124,14 @@ class CircuitCanvasView:
             self._handle_mouse_move(pos)
         elif event_type == "mouseup":
             self._handle_mouse_up(pos)
+
+    def _delete_context_target(self) -> None:
+        """Delete the object targeted by context menu."""
+        if self._context_menu_target:
+            obj_type, obj_id = self._context_menu_target
+            self.viewmodel.delete_object(obj_type, obj_id)
+            self._context_menu_target = None
+        self.context_menu.close()
 
     def _handle_mouse_down(self, pos: Point) -> None:
         """Handle mouse down event."""

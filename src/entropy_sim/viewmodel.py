@@ -5,7 +5,7 @@ from uuid import UUID
 
 from nicegui import ui
 
-from .models import Circuit, Point, Wire
+from .models import Circuit, Point, Wire, WirePoint
 from .wire_manager import WireManager
 
 
@@ -190,6 +190,128 @@ class CircuitViewModel:
             center.x - half_w <= point.x <= center.x + half_w
             and center.y - half_h <= point.y <= center.y + half_h
         )
+
+    # === Object Detection ===
+
+    def get_object_at(self, pos: Point) -> tuple[str, UUID] | None:
+        """Get the object at a position. Returns (type, id) or None."""
+        # Check wire corners first
+        for wire in self.circuit.wires:
+            for i, point in enumerate(wire.path):
+                if i == 0 or i == len(wire.path) - 1:
+                    continue
+                dist = ((pos.x - point.x) ** 2 + (pos.y - point.y) ** 2) ** 0.5
+                if dist <= self._wire_manager.WIRE_CORNER_HIT_RADIUS:
+                    return ("wire", wire.id)
+
+        # Check batteries
+        for battery in self.circuit.batteries:
+            if self._point_in_rect(
+                pos, battery.position, self.BATTERY_WIDTH, self.BATTERY_HEIGHT
+            ):
+                return ("battery", battery.id)
+
+        # Check LEDs
+        for led in self.circuit.leds:
+            if self._point_in_rect(pos, led.position, self.LED_WIDTH, self.LED_HEIGHT):
+                return ("led", led.id)
+
+        # Check wire segments
+        for wire in self.circuit.wires:
+            if self._point_near_wire(pos, wire):
+                return ("wire", wire.id)
+
+        return None
+
+    def _point_near_wire(self, pos: Point, wire: Wire, threshold: float = 10) -> bool:
+        """Check if point is near any segment of a wire."""
+        for i in range(len(wire.path) - 1):
+            p1 = wire.path[i]
+            p2 = wire.path[i + 1]
+            dist = self._point_to_segment_distance(pos, p1, p2)
+            if dist <= threshold:
+                return True
+        return False
+
+    def _point_to_segment_distance(
+        self, pos: Point, p1: WirePoint, p2: WirePoint
+    ) -> float:
+        """Calculate distance from point to line segment."""
+        # Vector from p1 to p2
+        dx = p2.x - p1.x
+        dy = p2.y - p1.y
+        seg_len_sq = dx * dx + dy * dy
+
+        if seg_len_sq == 0:
+            # p1 and p2 are the same point
+            return ((pos.x - p1.x) ** 2 + (pos.y - p1.y) ** 2) ** 0.5
+
+        # Project pos onto the line, clamped to segment
+        t = max(0, min(1, ((pos.x - p1.x) * dx + (pos.y - p1.y) * dy) / seg_len_sq))
+        proj_x = p1.x + t * dx
+        proj_y = p1.y + t * dy
+
+        return ((pos.x - proj_x) ** 2 + (pos.y - proj_y) ** 2) ** 0.5
+
+    # === Delete Operations ===
+
+    def delete_object(self, obj_type: str, obj_id: UUID) -> None:
+        """Delete an object by type and ID."""
+        self._save_state()
+
+        if obj_type == "battery":
+            self._delete_battery(obj_id)
+        elif obj_type == "led":
+            self._delete_led(obj_id)
+        elif obj_type == "wire":
+            self._delete_wire(obj_id)
+
+        self._notify_change()
+
+    def _delete_battery(self, battery_id: UUID) -> None:
+        """Delete a battery and its connected wires."""
+        battery = next((b for b in self.circuit.batteries if b.id == battery_id), None)
+        if not battery:
+            return
+
+        # Delete connected wires
+        conn_ids = {battery.positive.id, battery.negative.id}
+        self.circuit.wires = [
+            w
+            for w in self.circuit.wires
+            if w.start_connected_to not in conn_ids
+            and w.end_connected_to not in conn_ids
+        ]
+
+        # Delete the battery
+        self.circuit.batteries = [
+            b for b in self.circuit.batteries if b.id != battery_id
+        ]
+        ui.notify("Battery deleted")
+
+    def _delete_led(self, led_id: UUID) -> None:
+        """Delete an LED and its connected wires."""
+        led = next((item for item in self.circuit.leds if item.id == led_id), None)
+        if not led:
+            return
+
+        # Delete connected wires
+        conn_ids = {led.anode.id, led.cathode.id}
+        self.circuit.wires = [
+            w
+            for w in self.circuit.wires
+            if w.start_connected_to not in conn_ids
+            and w.end_connected_to not in conn_ids
+        ]
+
+        # Delete the LED
+        self.circuit.leds = [item for item in self.circuit.leds if item.id != led_id]
+        ui.notify("LED deleted")
+
+    def _delete_wire(self, wire_id: UUID) -> None:
+        """Delete a wire."""
+        self.circuit.wires = [w for w in self.circuit.wires if w.id != wire_id]
+        ui.notify("Wire deleted")
 
     # === Circuit Operations ===
 
