@@ -99,7 +99,9 @@ class CircuitViewModel:
             self.wire_start_point = pos
 
         wire.end.position = pos
-        wire.path = find_wire_path(wire.start.position, wire.end.position)
+        wire.path = find_wire_path(
+            wire.start.position, wire.end.position, self.circuit, str(wire.id)
+        )
         self._notify_change()
 
     def update_wire_end(self, pos: Point) -> None:
@@ -116,7 +118,9 @@ class CircuitViewModel:
             end_pos = pos
 
         self.dragging_wire.end.position = end_pos
-        self.dragging_wire.path = find_wire_path(self.wire_start_point, end_pos)
+        self.dragging_wire.path = find_wire_path(
+            self.wire_start_point, end_pos, self.circuit, str(self.dragging_wire.id)
+        )
         self._notify_change()
 
     def finish_wire(self, pos: Point) -> None:
@@ -136,7 +140,10 @@ class CircuitViewModel:
 
         if self.wire_start_point:
             self.dragging_wire.path = find_wire_path(
-                self.wire_start_point, self.dragging_wire.end.position
+                self.wire_start_point,
+                self.dragging_wire.end.position,
+                self.circuit,
+                str(self.dragging_wire.id),
             )
 
         self.dragging_wire = None
@@ -213,12 +220,22 @@ class CircuitViewModel:
                     wire.start.position = Point(
                         x=conn_point.position.x, y=conn_point.position.y
                     )
-                    wire.path = find_wire_path(wire.start.position, wire.end.position)
+                    wire.path = find_wire_path(
+                        wire.start.position,
+                        wire.end.position,
+                        self.circuit,
+                        str(wire.id),
+                    )
                 elif wire.end_connected_to == conn_point.id:
                     wire.end.position = Point(
                         x=conn_point.position.x, y=conn_point.position.y
                     )
-                    wire.path = find_wire_path(wire.start.position, wire.end.position)
+                    wire.path = find_wire_path(
+                        wire.start.position,
+                        wire.end.position,
+                        self.circuit,
+                        str(wire.id),
+                    )
 
     def _point_in_rect(
         self, point: Point, center: Point, width: float, height: float
