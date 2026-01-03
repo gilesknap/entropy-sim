@@ -50,6 +50,11 @@ class CircuitViewModel:
         """Get the wire corner currently being dragged."""
         return self._wire_manager.dragging_wire_corner
 
+    def clear_drag_state(self) -> None:
+        """Clear all dragging state (component and wire corner)."""
+        self.dragging_component = None
+        self._wire_manager.dragging_wire_corner = None
+
     # === Change Notification ===
 
     def add_change_listener(self, callback: Callable[[], None]) -> None:

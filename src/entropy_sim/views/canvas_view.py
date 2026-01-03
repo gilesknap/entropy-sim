@@ -157,8 +157,7 @@ class CircuitCanvasView:
             obj_type, obj_id = self._context_menu_target
             self.viewmodel.rotate_object(obj_type, obj_id, degrees)
             # Clear any drag state that might have been set
-            self.viewmodel.dragging_component = None
-            self.viewmodel.dragging_wire_corner = None
+            self.viewmodel.clear_drag_state()
 
     def _delete_context_target(self) -> None:
         """Delete the object targeted by context menu."""

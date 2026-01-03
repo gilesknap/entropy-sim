@@ -1,5 +1,7 @@
 """SVG rendering for circuit components."""
 
+from importlib.resources import files
+
 from ..models import Circuit
 
 
@@ -17,6 +19,23 @@ class SVGRenderer:
         # Track canvas dimensions (coordinate system)
         self.width = self.DEFAULT_WIDTH
         self.height = self.DEFAULT_HEIGHT
+        # Load component SVG templates
+        self._load_component_templates()
+
+    def _load_component_templates(self) -> None:
+        """Load SVG component templates from asset files."""
+        import entropy_sim.assets.components as components_pkg
+
+        self.battery_template = (
+            files(components_pkg).joinpath("battery.svg").read_text()
+        )
+        self.battery_mini_template = (
+            files(components_pkg).joinpath("battery_mini.svg").read_text()
+        )
+        self.led_template = files(components_pkg).joinpath("led.svg").read_text()
+        self.led_mini_template = (
+            files(components_pkg).joinpath("led_mini.svg").read_text()
+        )
 
     def calculate_canvas_size(self, circuit: Circuit) -> tuple[int, int]:
         """Calculate canvas size based on content and defaults."""
@@ -141,26 +160,12 @@ class SVGRenderer:
     def get_battery_svg(
         self, x: float, y: float, rotation: float = 0.0, mini: bool = False
     ) -> str:
-        """Generate SVG for a battery."""
+        """Generate SVG for a battery (Fritzing-style 9V battery)."""
         if mini:
-            return """
-            <svg width="80" height="40" viewBox="-40 -20 80 40">
-                <rect x="-35" y="-15" width="70" height="30" rx="3"
-                      fill="#fbbf24" stroke="#92400e" stroke-width="2"/>
-                <rect x="35" y="-8" width="5" height="16" fill="#92400e"/>
-                <text x="0" y="5" text-anchor="middle" font-size="12"
-                      fill="#92400e">+  -</text>
-            </svg>
-            """
+            return self.battery_mini_template
         return f"""
         <g transform="translate({x}, {y}) rotate({rotation})">
-            <rect x="-35" y="-15" width="70" height="30" rx="3"
-                  fill="#fbbf24" fill-opacity="0.7" stroke="#92400e" stroke-width="2"/>
-            <rect x="-40" y="-8" width="5" height="16" fill="#92400e"/>
-            <text x="-20" y="5" text-anchor="middle" font-size="14"
-                  font-weight="bold" fill="#92400e">+</text>
-            <text x="20" y="5" text-anchor="middle" font-size="14"
-                  font-weight="bold" fill="#92400e">-</text>
+            {self.battery_template}
         </g>
         """
 
@@ -173,40 +178,22 @@ class SVGRenderer:
         rotation: float = 0.0,
         mini: bool = False,
     ) -> str:
-        """Generate SVG for an LED."""
+        """Generate SVG for an LED (Fritzing-style realistic LED)."""
         led_color = self._get_led_color(color, is_on)
-        glow = 'filter="url(#glow)"' if is_on else ""
+        led_body_color = led_color if is_on else self._get_led_off_body(color)
+        glow = 'filter="url(#ledGlow)"' if is_on else ""
 
         if mini:
-            return f"""
-            <svg width="30" height="60" viewBox="-15 -30 30 60">
-                <polygon points="0,-20 12,10 -12,10" fill="{led_color}"
-                         stroke="#333" stroke-width="2"/>
-                <line x1="-12" y1="10" x2="12" y2="10"
-                      stroke="#333" stroke-width="3"/>
-                <line x1="0" y1="10" x2="0" y2="25"
-                      stroke="#333" stroke-width="2"/>
-            </svg>
-            """
+            return self.led_mini_template.format(body_color=led_body_color)
+
+        # Load template and substitute color placeholders
+        svg_content = self.led_template.format(
+            led_color=led_color, body_color=led_body_color, glow=glow
+        )
+
         return f"""
         <g transform="translate({x}, {y}) rotate({rotation})">
-            <defs>
-                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-                    <feMerge>
-                        <feMergeNode in="coloredBlur"/>
-                        <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
-                </filter>
-            </defs>
-            <polygon points="0,-20 15,15 -15,15" fill="{led_color}" fill-opacity="0.7"
-                     stroke="#333" stroke-width="2" {glow}/>
-            <line x1="-15" y1="15" x2="15" y2="15"
-                  stroke="#333" stroke-width="3"/>
-            <line x1="0" y1="-20" x2="0" y2="-30"
-                  stroke="#333" stroke-width="2"/>
-            <line x1="0" y1="15" x2="0" y2="30"
-                  stroke="#333" stroke-width="2"/>
+            {svg_content}
         </g>
         """
 
@@ -231,3 +218,13 @@ class SVGRenderer:
         }
         on_color, off_color = colors.get(color, colors["red"])
         return on_color if is_on else off_color
+
+    def _get_led_off_body(self, color: str) -> str:
+        """Get the body/dome color for an LED when off (more translucent)."""
+        body_colors = {
+            "red": "#ff9999",
+            "green": "#99ff99",
+            "blue": "#9999ff",
+            "yellow": "#ffff99",
+        }
+        return body_colors.get(color, body_colors["red"])
