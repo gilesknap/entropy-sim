@@ -37,6 +37,17 @@ class CircuitObject(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     position: Point = Field(default_factory=Point)
     rotation: float = 0.0  # Rotation in degrees
+    size_x: float = 0.0  # Half-width (extends left and right from position)
+    size_y: float = 0.0  # Half-height (extends up and down from position)
+
+    def get_bounds(self) -> tuple[float, float, float, float]:
+        """Get bounding box (min_x, min_y, max_x, max_y)."""
+        return (
+            self.position.x - self.size_x,
+            self.position.y - self.size_y,
+            self.position.x + self.size_x,
+            self.position.y + self.size_y,
+        )
 
 
 class Battery(CircuitObject):
@@ -44,6 +55,8 @@ class Battery(CircuitObject):
 
     object_type: Literal[ObjectType.BATTERY] = ObjectType.BATTERY
     voltage: float = 9.0  # Volts
+    size_x: float = 40.0  # Battery is 80 wide
+    size_y: float = 20.0  # Battery is 40 tall
     positive: ConnectionPoint = Field(
         default_factory=lambda: ConnectionPoint(label="positive")
     )
@@ -68,6 +81,8 @@ class LED(CircuitObject):
     object_type: Literal[ObjectType.LED] = ObjectType.LED
     color: str = "red"
     is_on: bool = False
+    size_x: float = 15.0  # LED is 30 wide
+    size_y: float = 30.0  # LED is 60 tall
     anode: ConnectionPoint = Field(
         default_factory=lambda: ConnectionPoint(label="positive")
     )
@@ -106,6 +121,12 @@ class Wire(CircuitObject):
     start_connected_to: UUID | None = None
     end_connected_to: UUID | None = None
 
+    def get_bounds(self) -> tuple[float, float, float, float]:
+        """Get bounding box including all path points."""
+        all_x = [self.start.position.x, self.end.position.x] + [p.x for p in self.path]
+        all_y = [self.start.position.y, self.end.position.y] + [p.y for p in self.path]
+        return (min(all_x), min(all_y), max(all_x), max(all_y))
+
 
 # Type alias for any component
 Component = Battery | LED | Wire
@@ -120,9 +141,14 @@ class Circuit(BaseModel):
     leds: list[LED] = Field(default_factory=list)
     wires: list[Wire] = Field(default_factory=list)
 
+    @property
+    def all_objects(self) -> list[CircuitObject]:
+        """Get all circuit objects as a single list."""
+        return [*self.batteries, *self.leds, *self.wires]
+
     def get_bounds(self) -> tuple[float, float, float, float]:
         """Get bounding box of all components (min_x, min_y, max_x, max_y)."""
-        if not self.batteries and not self.leds and not self.wires:
+        if not self.all_objects:
             return (0, 0, 0, 0)
 
         min_x = float("inf")
@@ -130,31 +156,12 @@ class Circuit(BaseModel):
         max_x = float("-inf")
         max_y = float("-inf")
 
-        for battery in self.batteries:
-            # Battery dimensions: 80x40 centered on position
-            min_x = min(min_x, battery.position.x - 40)
-            max_x = max(max_x, battery.position.x + 40)
-            min_y = min(min_y, battery.position.y - 20)
-            max_y = max(max_y, battery.position.y + 20)
-
-        for led in self.leds:
-            # LED dimensions: 30x60 centered on position
-            min_x = min(min_x, led.position.x - 15)
-            max_x = max(max_x, led.position.x + 15)
-            min_y = min(min_y, led.position.y - 30)
-            max_y = max(max_y, led.position.y + 30)
-
-        for wire in self.wires:
-            for point in wire.path:
-                min_x = min(min_x, point.x)
-                max_x = max(max_x, point.x)
-                min_y = min(min_y, point.y)
-                max_y = max(max_y, point.y)
-            # Also check start/end positions
-            min_x = min(min_x, wire.start.position.x, wire.end.position.x)
-            max_x = max(max_x, wire.start.position.x, wire.end.position.x)
-            min_y = min(min_y, wire.start.position.y, wire.end.position.y)
-            max_y = max(max_y, wire.start.position.y, wire.end.position.y)
+        for obj in self.all_objects:
+            obj_min_x, obj_min_y, obj_max_x, obj_max_y = obj.get_bounds()
+            min_x = min(min_x, obj_min_x)
+            min_y = min(min_y, obj_min_y)
+            max_x = max(max_x, obj_max_x)
+            max_y = max(max_y, obj_max_y)
 
         return (min_x, min_y, max_x, max_y)
 

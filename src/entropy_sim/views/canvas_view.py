@@ -91,8 +91,15 @@ class CircuitCanvasView:
 
     def _handle_mouse_down(self, pos: Point) -> None:
         """Handle mouse down event."""
-        if self.viewmodel.selected_palette_item == "wire":
+        if (
+            self.viewmodel.selected_palette_item == "wire"
+            or self.viewmodel.dragging_wire
+        ):
+            # Wire drawing uses clicks to add points
             self.viewmodel.start_wire(pos)
+            # Don't clear selection while drawing wire
+            if not self.viewmodel.dragging_wire:
+                self.palette.update_selection_label("None")
         elif self.viewmodel.selected_palette_item:
             self.viewmodel.place_component(pos)
             self.palette.update_selection_label("None")
@@ -103,15 +110,13 @@ class CircuitCanvasView:
         """Handle mouse move event."""
         if self.viewmodel.dragging_wire:
             self.viewmodel.update_wire_end(pos)
-        elif self.viewmodel.dragging_component:
+        elif self.viewmodel.dragging_component or self.viewmodel.dragging_wire_corner:
             self.viewmodel.update_component_position(pos)
 
     def _handle_mouse_up(self, pos: Point) -> None:
         """Handle mouse up event."""
-        if self.viewmodel.dragging_wire:
-            self.viewmodel.finish_wire(pos)
-            self.palette.update_selection_label("None")
-        elif self.viewmodel.dragging_component:
+        # Wire drawing is now click-based, so mouseup only handles component drag
+        if self.viewmodel.dragging_component or self.viewmodel.dragging_wire_corner:
             self.viewmodel.finish_drag()
 
     def _on_circuit_change(self) -> None:
