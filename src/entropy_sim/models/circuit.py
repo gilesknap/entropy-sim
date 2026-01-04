@@ -1,4 +1,9 @@
-"""Circuit model containing all components."""
+"""
+Circuit model containing a layout of components.
+
+Components can be items with connection points (e.g., batteries, LEDs)
+or connectors (e.g., wires).
+"""
 
 from typing import Annotated
 from uuid import UUID, uuid4
@@ -7,24 +12,41 @@ from pydantic import BaseModel, Discriminator, Field
 
 from entropy_sim.object_type import ObjectType
 
+from .base_item import BaseItem
 from .battery import Battery
-from .circuit_base import CircuitBase
 from .led import LED
 from .liion_cell import LiIonCell
 from .point import ConnectionPoint, Point
 from .wire import Wire
 
-# Type alias for any component with discriminated union
+# Type alias for all components with discriminated union
 Component = Annotated[
     Battery | LiIonCell | LED | Wire,
     Discriminator("object_type"),
 ]
 
-# Mapping of ObjectType to component class
-_COMPONENT_CLASSES: dict[ObjectType, type[Battery | LiIonCell | LED]] = {
+# Type alias for all items (non-connector components)
+Item = Annotated[
+    Battery | LiIonCell | LED,
+    Discriminator("object_type"),
+]
+
+# Type alias for all connectors
+Connector = Annotated[
+    Wire,
+    Discriminator("object_type"),
+]
+
+# Mapping of items (non-connector components) to component class
+_ITEM_CLASSES: dict[ObjectType, type[Battery | LiIonCell | LED]] = {
     ObjectType.BATTERY: Battery,
     ObjectType.LIION_CELL: LiIonCell,
     ObjectType.LED: LED,
+}
+
+# Mapping of connectors to connector class
+_CONNECTOR_CLASSES: dict[ObjectType, type[Wire]] = {
+    ObjectType.WIRE: Wire,
 }
 
 
@@ -37,7 +59,7 @@ class Circuit(BaseModel):
     wires: list[Wire] = Field(default_factory=list)
 
     @property
-    def all_objects(self) -> list[CircuitBase]:
+    def all_objects(self) -> list[BaseItem]:
         """Get all circuit objects as a single list."""
         return [*self.components, *self.wires]
 
@@ -62,7 +84,7 @@ class Circuit(BaseModel):
 
     def add_object(
         self, object_type: ObjectType, position: Point | None = None, **kwargs
-    ) -> Battery | LiIonCell | LED:
+    ) -> BaseItem:
         """Add a new component to the circuit based on object type.
 
         Args:
@@ -74,7 +96,8 @@ class Circuit(BaseModel):
         Returns:
             The created component object
         """
-        obj_class = _COMPONENT_CLASSES.get(object_type)
+        obj_class = _ITEM_CLASSES.get(object_type)
+
         if obj_class is None:
             raise ValueError(f"Cannot add object of type {object_type}")
 
@@ -82,27 +105,6 @@ class Circuit(BaseModel):
         obj.update_connection_positions()
         self.components.append(obj)
         return obj
-
-    def add_battery(self, position: Point | None = None) -> Battery:
-        """Add a new battery to the circuit."""
-        battery = Battery(position=position or Point())
-        battery.update_connection_positions()
-        self.components.append(battery)
-        return battery
-
-    def add_liion_cell(self, position: Point | None = None) -> LiIonCell:
-        """Add a new Li-Ion cell to the circuit."""
-        cell = LiIonCell(position=position or Point())
-        cell.update_connection_positions()
-        self.components.append(cell)
-        return cell
-
-    def add_led(self, position: Point | None = None, color: str = "red") -> LED:
-        """Add a new LED to the circuit."""
-        led = LED(position=position or Point(), color=color)
-        led.update_connection_positions()
-        self.components.append(led)
-        return led
 
     def add_wire(self) -> Wire:
         """Add a new wire to the circuit."""

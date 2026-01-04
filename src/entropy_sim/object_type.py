@@ -2,6 +2,8 @@
 
 from enum import Enum
 
+# These names for all component types are used to link the model, and view
+
 
 class ObjectType(str, Enum):
     """Types of circuit objects."""

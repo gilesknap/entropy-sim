@@ -6,15 +6,15 @@ from pydantic import Field
 
 from entropy_sim.object_type import ObjectType
 
-from .circuit_base import CircuitBase
+from .base_item import BaseItem
 from .point import ConnectionPoint, Point
 
 
-class Battery(CircuitBase):
+class Battery(BaseItem):
     """A battery with positive and negative terminals."""
 
     object_type: Literal[ObjectType.BATTERY] = ObjectType.BATTERY
-    rotatable: bool = True
+    is_rotatable: bool = True
     has_connections: bool = True
     voltage: float = 9.0  # Volts
     size_x: float = 40.0  # Battery is 80 wide

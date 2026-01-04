@@ -6,15 +6,13 @@ from uuid import UUID
 from nicegui import ui
 
 from .models import (
-    LED,
-    Battery,
     Circuit,
     CircuitObject,
-    LiIonCell,
+    ConnectorPoint,
     Point,
     Wire,
-    WirePoint,
 )
+from .object_type import ObjectType
 from .wire_manager import WireManager
 
 
@@ -32,7 +30,7 @@ class CircuitViewModel:
         self._wire_manager = WireManager(self.circuit, self._notify_change)
 
         # Interaction state
-        self.selected_palette_item: str | None = None
+        self.selected_palette_item: ObjectType | None = None
         self.dragging_component: UUID | None = None
         self.drag_offset = Point(x=0, y=0)
 
@@ -71,7 +69,7 @@ class CircuitViewModel:
 
     # === Palette Selection ===
 
-    def select_palette_item(self, item: str) -> None:
+    def select_palette_item(self, item: ObjectType) -> None:
         """Select an item from the palette."""
         self.selected_palette_item = item
         ui.notify(f"Selected: {item}. Click on canvas to place.")
@@ -89,15 +87,7 @@ class CircuitViewModel:
 
         self._save_state()
 
-        if self.selected_palette_item == "battery":
-            self.circuit.add_battery(pos)
-            ui.notify("Battery placed!")
-        elif self.selected_palette_item == "liion_cell":
-            self.circuit.add_liion_cell(pos)
-            ui.notify("Li-Ion Cell placed!")
-        elif self.selected_palette_item == "led":
-            self.circuit.add_led(pos)
-            ui.notify("LED placed!")
+        self.circuit.add_object(self.selected_palette_item, pos)
 
         self.selected_palette_item = None
         self._notify_change()
@@ -120,10 +110,6 @@ class CircuitViewModel:
         """Cancel wire drawing (called on Esc)."""
         self._wire_manager.cancel_wire()
         self.selected_palette_item = None
-
-    def finish_wire(self, pos: Point) -> None:
-        """Legacy method - now handled by start_wire click logic."""
-        pass
 
     # === Component Dragging ===
 
@@ -173,17 +159,6 @@ class CircuitViewModel:
         self.dragging_component = None
         self._wire_manager.finish_corner_drag()
 
-    def _point_in_rect(
-        self, point: Point, center: Point, width: float, height: float
-    ) -> bool:
-        """Check if a point is inside a rectangle centered at center."""
-        half_w = width / 2
-        half_h = height / 2
-        return (
-            center.x - half_w <= point.x <= center.x + half_w
-            and center.y - half_h <= point.y <= center.y + half_h
-        )
-
     # === Object Detection ===
 
     def get_object_at(self, pos: Point) -> tuple[str, UUID, CircuitObject] | None:
@@ -220,7 +195,7 @@ class CircuitViewModel:
         return False
 
     def _point_to_segment_distance(
-        self, pos: Point, p1: WirePoint, p2: WirePoint
+        self, pos: Point, p1: ConnectorPoint, p2: ConnectorPoint
     ) -> float:
         """Calculate distance from point to line segment."""
         # Vector from p1 to p2
@@ -251,13 +226,7 @@ class CircuitViewModel:
             # Delete connected wires if component has connections
             if component.has_connections:
                 # Get all connection point IDs from this component
-                conn_ids = set()
-                if isinstance(component, Battery):
-                    conn_ids = {component.positive.id, component.negative.id}
-                elif isinstance(component, LiIonCell):
-                    conn_ids = {component.positive.id, component.negative.id}
-                elif isinstance(component, LED):
-                    conn_ids = {component.anode.id, component.cathode.id}
+                conn_ids = [cp.id for cp in component.connection_points]
 
                 # Remove wires connected to these points
                 self.circuit.wires = [
@@ -316,14 +285,7 @@ class CircuitViewModel:
     def save_circuit(self) -> str:
         """Save the circuit and return JSON data."""
         json_data = self.circuit.model_dump_json(indent=2)
-        battery_count = sum(
-            1 for c in self.circuit.components if isinstance(c, Battery)
-        )
-        led_count = sum(1 for c in self.circuit.components if isinstance(c, LED))
-        ui.notify(
-            f"Circuit saved! ({battery_count} batteries, "
-            f"{led_count} LEDs, {len(self.circuit.wires)} wires)"
-        )
+        ui.notify("Circuit saved!")
         return json_data
 
     def load_circuit(self, json_data: str) -> None:

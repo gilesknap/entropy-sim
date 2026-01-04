@@ -6,6 +6,8 @@ from uuid import UUID
 from nicegui import ui
 from nicegui.events import MouseEventArguments
 
+from entropy_sim.object_type import ObjectType
+
 from ..models import Point
 from ..viewmodel import CircuitViewModel
 from .controls import ControlsView
@@ -130,8 +132,8 @@ class CircuitCanvasView:
             self._context_menu_target = (obj_type, obj_id)
             self._context_menu_type_name = circuit_obj.display_name
             # Show/hide rotation options based on object's rotatable property
-            self.rotate_cw_item.set_visibility(circuit_obj.rotatable)
-            self.rotate_ccw_item.set_visibility(circuit_obj.rotatable)
+            self.rotate_cw_item.set_visibility(circuit_obj.is_rotatable)
+            self.rotate_ccw_item.set_visibility(circuit_obj.is_rotatable)
         else:
             self._context_menu_target = None
             self._context_menu_type_name = ""
@@ -169,7 +171,7 @@ class CircuitCanvasView:
     def _handle_mouse_down(self, pos: Point) -> None:
         """Handle mouse down event."""
         if (
-            self.viewmodel.selected_palette_item == "wire"
+            self.viewmodel.selected_palette_item == ObjectType.WIRE
             or self.viewmodel.dragging_wire
         ):
             # Wire drawing uses clicks to add points
