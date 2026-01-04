@@ -6,11 +6,8 @@ from uuid import UUID
 from nicegui import ui
 
 from .models import (
-    LED,
-    Battery,
     Circuit,
     CircuitObject,
-    LiIonCell,
     Point,
     Wire,
     WirePoint,
@@ -114,10 +111,6 @@ class CircuitViewModel:
         self._wire_manager.cancel_wire()
         self.selected_palette_item = None
 
-    def finish_wire(self, pos: Point) -> None:
-        """Legacy method - now handled by start_wire click logic."""
-        pass
-
     # === Component Dragging ===
 
     def check_component_drag(self, pos: Point) -> bool:
@@ -165,17 +158,6 @@ class CircuitViewModel:
         """Finish dragging a component or wire corner."""
         self.dragging_component = None
         self._wire_manager.finish_corner_drag()
-
-    def _point_in_rect(
-        self, point: Point, center: Point, width: float, height: float
-    ) -> bool:
-        """Check if a point is inside a rectangle centered at center."""
-        half_w = width / 2
-        half_h = height / 2
-        return (
-            center.x - half_w <= point.x <= center.x + half_w
-            and center.y - half_h <= point.y <= center.y + half_h
-        )
 
     # === Object Detection ===
 
@@ -244,13 +226,7 @@ class CircuitViewModel:
             # Delete connected wires if component has connections
             if component.has_connections:
                 # Get all connection point IDs from this component
-                conn_ids = set()
-                if isinstance(component, Battery):
-                    conn_ids = {component.positive.id, component.negative.id}
-                elif isinstance(component, LiIonCell):
-                    conn_ids = {component.positive.id, component.negative.id}
-                elif isinstance(component, LED):
-                    conn_ids = {component.anode.id, component.cathode.id}
+                conn_ids = [cp.id for cp in component.connection_points]
 
                 # Remove wires connected to these points
                 self.circuit.wires = [
@@ -309,14 +285,7 @@ class CircuitViewModel:
     def save_circuit(self) -> str:
         """Save the circuit and return JSON data."""
         json_data = self.circuit.model_dump_json(indent=2)
-        battery_count = sum(
-            1 for c in self.circuit.components if isinstance(c, Battery)
-        )
-        led_count = sum(1 for c in self.circuit.components if isinstance(c, LED))
-        ui.notify(
-            f"Circuit saved! ({battery_count} batteries, "
-            f"{led_count} LEDs, {len(self.circuit.wires)} wires)"
-        )
+        ui.notify("Circuit saved!")
         return json_data
 
     def load_circuit(self, json_data: str) -> None:
