@@ -21,10 +21,14 @@ Component = Annotated[
 ]
 
 # Mapping of ObjectType to component class
-_COMPONENT_CLASSES: dict[ObjectType, type[Battery | LiIonCell | LED]] = {
+_ITEM_CLASSES: dict[ObjectType, type[Battery | LiIonCell | LED]] = {
     ObjectType.BATTERY: Battery,
     ObjectType.LIION_CELL: LiIonCell,
     ObjectType.LED: LED,
+}
+
+_CONNECTOR_CLASSES: dict[ObjectType, type[Wire]] = {
+    ObjectType.WIRE: Wire,
 }
 
 
@@ -74,7 +78,7 @@ class Circuit(BaseModel):
         Returns:
             The created component object
         """
-        obj_class = _COMPONENT_CLASSES.get(object_type)
+        obj_class = _ITEM_CLASSES.get(object_type)
 
         # there are components (circuit elements etc) and connectors (wires etc.)
         if obj_class is None:

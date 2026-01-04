@@ -8,9 +8,9 @@ from nicegui import ui
 from .models import (
     Circuit,
     CircuitObject,
+    ConnectorPoint,
     Point,
     Wire,
-    WirePoint,
 )
 from .object_type import ObjectType
 from .wire_manager import WireManager
@@ -195,7 +195,7 @@ class CircuitViewModel:
         return False
 
     def _point_to_segment_distance(
-        self, pos: Point, p1: WirePoint, p2: WirePoint
+        self, pos: Point, p1: ConnectorPoint, p2: ConnectorPoint
     ) -> float:
         """Calculate distance from point to line segment."""
         # Vector from p1 to p2

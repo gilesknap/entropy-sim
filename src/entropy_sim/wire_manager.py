@@ -9,10 +9,10 @@ from .models import (
     Circuit,
     CircuitObject,
     ConnectionPoint,
+    ConnectorPoint,
     LiIonCell,
     Point,
     Wire,
-    WirePoint,
 )
 
 
@@ -104,10 +104,10 @@ class WireManager:
             start_pos = Point(x=conn_point.position.x, y=conn_point.position.y)
             wire.start.position = start_pos
             wire.start_connected_to = conn_point.id
-            wire.path = [WirePoint(x=start_pos.x, y=start_pos.y)]
+            wire.path = [ConnectorPoint(x=start_pos.x, y=start_pos.y)]
         else:
             wire.start.position = pos
-            wire.path = [WirePoint(x=pos.x, y=pos.y)]
+            wire.path = [ConnectorPoint(x=pos.x, y=pos.y)]
 
         wire.end.position = pos
         self._on_change()
@@ -123,7 +123,7 @@ class WireManager:
             pos, Point(x=last_point.x, y=last_point.y)
         )
 
-        self.dragging_wire.path.append(WirePoint(x=snapped_pos.x, y=snapped_pos.y))
+        self.dragging_wire.path.append(ConnectorPoint(x=snapped_pos.x, y=snapped_pos.y))
         self._on_change()
 
     def _finish_wire_at_connection(
@@ -162,10 +162,10 @@ class WireManager:
             else:
                 # Only start point - need to add a corner for L-shape
                 # Create corner: go horizontal first, then vertical
-                corner = WirePoint(x=end_pos.x, y=last_point.y)
+                corner = ConnectorPoint(x=end_pos.x, y=last_point.y)
                 self.dragging_wire.path.append(corner)
 
-        self.dragging_wire.path.append(WirePoint(x=end_pos.x, y=end_pos.y))
+        self.dragging_wire.path.append(ConnectorPoint(x=end_pos.x, y=end_pos.y))
 
         self.dragging_wire = None
         self._on_change()
