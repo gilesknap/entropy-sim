@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from .point import ConnectionPoint, Point
 
 
-class CircuitBase(BaseModel):
+class BaseItem(BaseModel):
     """Base class for all circuit objects."""
 
     id: UUID = Field(default_factory=uuid4)

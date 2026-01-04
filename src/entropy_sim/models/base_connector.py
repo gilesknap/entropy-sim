@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from .circuit_base import CircuitBase
+from .base_item import BaseItem
 from .point import ConnectionPoint
 
 
@@ -15,7 +15,7 @@ class ConnectorPoint(BaseModel):
     y: float
 
 
-class ConnectorBase(CircuitBase):
+class BaseConnector(BaseItem):
     """A connector for connecting two connection points."""
 
     is_connector: bool = True

@@ -1,23 +1,23 @@
 """Circuit component models."""
 
+from .base_connector import BaseConnector, ConnectorPoint
+from .base_item import BaseItem
 from .battery import Battery
 from .circuit import Circuit
-from .circuit_base import CircuitBase
-from .connector_base import ConnectorBase, ConnectorPoint
 from .led import LED
 from .liion_cell import LiIonCell
 from .point import ConnectionPoint, Point
 from .wire import Wire
 
 # Backward compatibility alias
-CircuitObject = CircuitBase
+CircuitObject = BaseItem
 
 __all__ = [
     "Battery",
     "Circuit",
-    "CircuitBase",
+    "BaseItem",
     "CircuitObject",
-    "ConnectorBase",
+    "BaseConnector",
     "ConnectionPoint",
     "LED",
     "LiIonCell",

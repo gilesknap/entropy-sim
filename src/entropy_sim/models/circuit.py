@@ -1,4 +1,9 @@
-"""Circuit model containing all components."""
+"""
+Circuit model containing a layout of components.
+
+Components can be items with connection points (e.g., batteries, LEDs)
+or connectors (e.g., wires).
+"""
 
 from typing import Annotated
 from uuid import UUID, uuid4
@@ -7,26 +12,27 @@ from pydantic import BaseModel, Discriminator, Field
 
 from entropy_sim.object_type import ObjectType
 
+from .base_item import BaseItem
 from .battery import Battery
-from .circuit_base import CircuitBase
 from .led import LED
 from .liion_cell import LiIonCell
 from .point import ConnectionPoint, Point
 from .wire import Wire
 
-# Type alias for any component with discriminated union
+# Type alias for all components with discriminated union
 Component = Annotated[
     Battery | LiIonCell | LED | Wire,
     Discriminator("object_type"),
 ]
 
-# Mapping of ObjectType to component class
+# Mapping of items (non-connector components) to component class
 _ITEM_CLASSES: dict[ObjectType, type[Battery | LiIonCell | LED]] = {
     ObjectType.BATTERY: Battery,
     ObjectType.LIION_CELL: LiIonCell,
     ObjectType.LED: LED,
 }
 
+# Mapping of connectors to connector class
 _CONNECTOR_CLASSES: dict[ObjectType, type[Wire]] = {
     ObjectType.WIRE: Wire,
 }
@@ -41,7 +47,7 @@ class Circuit(BaseModel):
     wires: list[Wire] = Field(default_factory=list)
 
     @property
-    def all_objects(self) -> list[CircuitBase]:
+    def all_objects(self) -> list[BaseItem]:
         """Get all circuit objects as a single list."""
         return [*self.components, *self.wires]
 
@@ -66,7 +72,7 @@ class Circuit(BaseModel):
 
     def add_object(
         self, object_type: ObjectType, position: Point | None = None, **kwargs
-    ) -> CircuitBase:
+    ) -> BaseItem:
         """Add a new component to the circuit based on object type.
 
         Args:

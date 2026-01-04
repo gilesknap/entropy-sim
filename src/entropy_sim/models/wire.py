@@ -4,10 +4,10 @@ from typing import Literal
 
 from entropy_sim.object_type import ObjectType
 
-from .connector_base import ConnectorBase
+from .base_connector import BaseConnector
 
 
-class Wire(ConnectorBase):
+class Wire(BaseConnector):
     """A wire connecting two connection points."""
 
     object_type: Literal[ObjectType.WIRE] = ObjectType.WIRE

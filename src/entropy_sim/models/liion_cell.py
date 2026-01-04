@@ -6,11 +6,11 @@ from pydantic import Field
 
 from entropy_sim.object_type import ObjectType
 
-from .circuit_base import CircuitBase
+from .base_item import BaseItem
 from .point import ConnectionPoint, Point
 
 
-class LiIonCell(CircuitBase):
+class LiIonCell(BaseItem):
     """A cylindrical Lithium Ion battery cell with button positive terminal."""
 
     object_type: Literal[ObjectType.LIION_CELL] = ObjectType.LIION_CELL
