@@ -25,6 +25,18 @@ Component = Annotated[
     Discriminator("object_type"),
 ]
 
+# Type alias for all items (non-connector components)
+Item = Annotated[
+    Battery | LiIonCell | LED,
+    Discriminator("object_type"),
+]
+
+# Type alias for all connectors
+Connector = Annotated[
+    Wire,
+    Discriminator("object_type"),
+]
+
 # Mapping of items (non-connector components) to component class
 _ITEM_CLASSES: dict[ObjectType, type[Battery | LiIonCell | LED]] = {
     ObjectType.BATTERY: Battery,

@@ -3,7 +3,7 @@
 from .base_connector import BaseConnector, ConnectorPoint
 from .base_item import BaseItem
 from .battery import Battery
-from .circuit import Circuit
+from .circuit import Circuit, Component, Item
 from .led import LED
 from .liion_cell import LiIonCell
 from .point import ConnectionPoint, Point
@@ -15,10 +15,12 @@ CircuitObject = BaseItem
 __all__ = [
     "Battery",
     "Circuit",
+    "Component",
     "BaseItem",
     "CircuitObject",
     "BaseConnector",
     "ConnectionPoint",
+    "Item",
     "LED",
     "LiIonCell",
     "Point",

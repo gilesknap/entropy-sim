@@ -4,13 +4,12 @@ from collections.abc import Callable
 from uuid import UUID
 
 from .models import (
-    LED,
-    Battery,
+    BaseConnector,
     Circuit,
     CircuitObject,
     ConnectionPoint,
     ConnectorPoint,
-    LiIonCell,
+    Item,
     Point,
     Wire,
 )
@@ -79,11 +78,11 @@ class WireManager:
         nearest_result = self._circuit.find_nearest_connection_point(
             pos, self.SNAP_DISTANCE
         )
-        # Filter out wires - we only want battery/LED connections
-        nearest: tuple[UUID, ConnectionPoint, Battery | LED] | None = None
+        # Filter out connectors - we only want 'items' here
+        nearest: tuple[UUID, ConnectionPoint, Item] | None = None
         if nearest_result:
             conn_id, conn_point, component = nearest_result
-            if not isinstance(component, Wire):
+            if not isinstance(component, BaseConnector):
                 nearest = (conn_id, conn_point, component)  # type: ignore[assignment]
 
         # If already drawing a wire, this click adds a corner or finishes
@@ -127,7 +126,7 @@ class WireManager:
         self._on_change()
 
     def _finish_wire_at_connection(
-        self, nearest: tuple[UUID, ConnectionPoint, Battery | LED]
+        self, nearest: tuple[UUID, ConnectionPoint, Item]
     ) -> None:
         """Finish wire at a connection point."""
         if not self.dragging_wire or not self.dragging_wire.path:
@@ -306,13 +305,7 @@ class WireManager:
 
     def update_connected_wires(self, component: CircuitObject) -> None:
         """Update wires connected to a component, maintaining orthogonal segments."""
-        conn_points: list[ConnectionPoint] = []
-        if isinstance(component, Battery):
-            conn_points = [component.positive, component.negative]
-        elif isinstance(component, LiIonCell):
-            conn_points = [component.positive, component.negative]
-        elif isinstance(component, LED):
-            conn_points = [component.anode, component.cathode]
+        conn_points: list[ConnectionPoint] = component.connection_points
 
         for conn_point in conn_points:
             for wire in self._circuit.wires:
