@@ -15,6 +15,7 @@ from .models import (
     Wire,
     WirePoint,
 )
+from .object_type import ObjectType
 from .wire_manager import WireManager
 
 
@@ -32,7 +33,7 @@ class CircuitViewModel:
         self._wire_manager = WireManager(self.circuit, self._notify_change)
 
         # Interaction state
-        self.selected_palette_item: str | None = None
+        self.selected_palette_item: ObjectType | None = None
         self.dragging_component: UUID | None = None
         self.drag_offset = Point(x=0, y=0)
 
@@ -71,7 +72,7 @@ class CircuitViewModel:
 
     # === Palette Selection ===
 
-    def select_palette_item(self, item: str) -> None:
+    def select_palette_item(self, item: ObjectType) -> None:
         """Select an item from the palette."""
         self.selected_palette_item = item
         ui.notify(f"Selected: {item}. Click on canvas to place.")
@@ -89,15 +90,7 @@ class CircuitViewModel:
 
         self._save_state()
 
-        if self.selected_palette_item == "battery":
-            self.circuit.add_battery(pos)
-            ui.notify("Battery placed!")
-        elif self.selected_palette_item == "liion_cell":
-            self.circuit.add_liion_cell(pos)
-            ui.notify("Li-Ion Cell placed!")
-        elif self.selected_palette_item == "led":
-            self.circuit.add_led(pos)
-            ui.notify("LED placed!")
+        self.circuit.add_object(self.selected_palette_item, pos)
 
         self.selected_palette_item = None
         self._notify_change()

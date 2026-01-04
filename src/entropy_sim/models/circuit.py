@@ -62,7 +62,7 @@ class Circuit(BaseModel):
 
     def add_object(
         self, object_type: ObjectType, position: Point | None = None, **kwargs
-    ) -> Battery | LiIonCell | LED:
+    ) -> CircuitBase:
         """Add a new component to the circuit based on object type.
 
         Args:
@@ -75,6 +75,8 @@ class Circuit(BaseModel):
             The created component object
         """
         obj_class = _COMPONENT_CLASSES.get(object_type)
+
+        # there are components (circuit elements etc) and connectors (wires etc.)
         if obj_class is None:
             raise ValueError(f"Cannot add object of type {object_type}")
 
@@ -82,27 +84,6 @@ class Circuit(BaseModel):
         obj.update_connection_positions()
         self.components.append(obj)
         return obj
-
-    def add_battery(self, position: Point | None = None) -> Battery:
-        """Add a new battery to the circuit."""
-        battery = Battery(position=position or Point())
-        battery.update_connection_positions()
-        self.components.append(battery)
-        return battery
-
-    def add_liion_cell(self, position: Point | None = None) -> LiIonCell:
-        """Add a new Li-Ion cell to the circuit."""
-        cell = LiIonCell(position=position or Point())
-        cell.update_connection_positions()
-        self.components.append(cell)
-        return cell
-
-    def add_led(self, position: Point | None = None, color: str = "red") -> LED:
-        """Add a new LED to the circuit."""
-        led = LED(position=position or Point(), color=color)
-        led.update_connection_positions()
-        self.components.append(led)
-        return led
 
     def add_wire(self) -> Wire:
         """Add a new wire to the circuit."""

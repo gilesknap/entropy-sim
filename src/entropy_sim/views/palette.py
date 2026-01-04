@@ -3,6 +3,8 @@
 from nicegui import ui
 from nicegui.events import KeyEventArguments
 
+from entropy_sim.object_type import ObjectType
+
 from ..viewmodel import CircuitViewModel
 from .svg_renderer import SVGRenderer
 
@@ -52,7 +54,7 @@ class PaletteView:
                 self.renderer.get_battery_svg(0, 0, mini=True), sanitize=False
             ).classes("w-full")
             ui.label("9V Battery").classes("text-center text-sm")
-        card.on("click", lambda: self._on_item_click("battery"))
+        card.on("click", lambda: self._on_item_click(ObjectType.BATTERY))
 
     def _render_liion_cell_item(self) -> None:
         """Render Li-Ion cell palette item."""
@@ -61,7 +63,7 @@ class PaletteView:
                 self.renderer.get_liion_cell_svg(0, 0, mini=True), sanitize=False
             ).classes("w-full")
             ui.label("Li-Ion Cell").classes("text-center text-sm")
-        card.on("click", lambda: self._on_item_click("liion_cell"))
+        card.on("click", lambda: self._on_item_click(ObjectType.LIION_CELL))
 
     def _render_led_item(self) -> None:
         """Render LED palette item."""
@@ -70,7 +72,7 @@ class PaletteView:
                 "w-full"
             )
             ui.label("LED").classes("text-center text-sm")
-        card.on("click", lambda: self._on_item_click("led"))
+        card.on("click", lambda: self._on_item_click(ObjectType.LED))
 
     def _render_wire_item(self) -> None:
         """Render wire palette item."""
@@ -79,7 +81,7 @@ class PaletteView:
                 "w-full"
             )
             ui.label("Wire").classes("text-center text-sm")
-        card.on("click", lambda: self._on_item_click("wire"))
+        card.on("click", lambda: self._on_item_click(ObjectType.WIRE))
 
     def _render_history_controls(self) -> None:
         """Render undo/redo buttons."""
@@ -93,7 +95,7 @@ class PaletteView:
                 "Redo (Ctrl+Shift+Z)"
             )
 
-    def _on_item_click(self, item: str) -> None:
+    def _on_item_click(self, item: ObjectType) -> None:
         """Handle palette item click."""
         self.viewmodel.select_palette_item(item)
         if self.selection_label:

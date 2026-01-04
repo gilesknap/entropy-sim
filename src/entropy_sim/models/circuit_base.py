@@ -13,8 +13,9 @@ class CircuitBase(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     position: Point = Field(default_factory=Point)
     rotation: float = 0.0  # Rotation in degrees
-    rotatable: bool = False  # Whether this object can be rotated
+    is_rotatable: bool = False  # Whether this object can be rotated
     has_connections: bool = False  # Whether this object has connection points
+    is_connector: bool = False  # Whether this object is a connector (e.g., wire)
     size_x: float = 0.0  # Half-width (extends left and right from position)
     size_y: float = 0.0  # Half-height (extends up and down from position)
 

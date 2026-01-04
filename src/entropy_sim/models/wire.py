@@ -22,6 +22,7 @@ class Wire(CircuitBase):
     """A wire connecting two connection points."""
 
     object_type: Literal[ObjectType.WIRE] = ObjectType.WIRE
+    is_connector: bool = True
     start: ConnectionPoint = Field(
         default_factory=lambda: ConnectionPoint(label="start")
     )
