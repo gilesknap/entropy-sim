@@ -98,7 +98,6 @@ class Circuit(BaseModel):
         """
         obj_class = _ITEM_CLASSES.get(object_type)
 
-        # there are components (circuit elements etc) and connectors (wires etc.)
         if obj_class is None:
             raise ValueError(f"Cannot add object of type {object_type}")
 
