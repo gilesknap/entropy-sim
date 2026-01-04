@@ -14,7 +14,7 @@ class LED(BaseItem):
     """An LED with anode and cathode terminals."""
 
     object_type: Literal[ObjectType.LED] = ObjectType.LED
-    rotatable: bool = True
+    is_rotatable: bool = True
     has_connections: bool = True
     color: str = "red"
     is_on: bool = False
