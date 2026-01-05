@@ -116,7 +116,11 @@ class CircuitCanvasView:
             )
 
     def _on_right_click(self, e: object) -> None:
-        """Handle right-click on canvas to determine target object."""
+        """Handle right-click on canvas to determine target object.
+
+        Args:
+            e: Event object containing offset coordinates.
+        """
         # Event can be dict or have args attribute depending on NiceGUI version
         if hasattr(e, "args"):
             args: dict[str, float] = e.args  # type: ignore[union-attr]
@@ -141,7 +145,11 @@ class CircuitCanvasView:
             self.rotate_ccw_item.set_visibility(False)
 
     def _on_mouse_event(self, e: MouseEventArguments) -> None:
-        """Handle mouse events on canvas."""
+        """Handle mouse events on canvas.
+
+        Args:
+            e: Mouse event with position and type information.
+        """
         pos = Point(x=e.image_x, y=e.image_y)
         event_type = e.type
 
@@ -153,7 +161,11 @@ class CircuitCanvasView:
             self._handle_mouse_up(pos)
 
     def _rotate_context_target(self, degrees: float) -> None:
-        """Rotate the object that was right-clicked."""
+        """Rotate the object that was right-clicked.
+
+        Args:
+            degrees: Rotation angle in degrees (positive = clockwise).
+        """
         if self._context_menu_target:
             obj_type, obj_id = self._context_menu_target
             self.viewmodel.rotate_object(obj_type, obj_id, degrees)
@@ -169,7 +181,11 @@ class CircuitCanvasView:
         self.context_menu.close()
 
     def _handle_mouse_down(self, pos: Point) -> None:
-        """Handle mouse down event."""
+        """Handle mouse down event.
+
+        Args:
+            pos: Mouse position on canvas.
+        """
         if (
             self.viewmodel.selected_palette_item == ObjectType.WIRE
             or self.viewmodel.dragging_wire
@@ -186,14 +202,22 @@ class CircuitCanvasView:
             self.viewmodel.check_component_drag(pos)
 
     def _handle_mouse_move(self, pos: Point) -> None:
-        """Handle mouse move event."""
+        """Handle mouse move event.
+
+        Args:
+            pos: Current mouse position on canvas.
+        """
         if self.viewmodel.dragging_wire:
             self.viewmodel.update_wire_end(pos)
         elif self.viewmodel.dragging_component or self.viewmodel.dragging_wire_corner:
             self.viewmodel.update_component_position(pos)
 
     def _handle_mouse_up(self, pos: Point) -> None:
-        """Handle mouse up event."""
+        """Handle mouse up event.
+
+        Args:
+            pos: Mouse position on canvas (unused, kept for consistency).
+        """
         # Wire drawing is now click-based, so mouseup only handles component drag
         if self.viewmodel.dragging_component or self.viewmodel.dragging_wire_corner:
             self.viewmodel.finish_drag()

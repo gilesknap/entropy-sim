@@ -59,7 +59,11 @@ class CircuitViewModel:
     # === Change Notification ===
 
     def add_change_listener(self, callback: Callable[[], None]) -> None:
-        """Register a callback to be called when circuit state changes."""
+        """Register a callback to be called when circuit state changes.
+
+        Args:
+            callback: Function to call when the circuit changes.
+        """
         self._on_change_callbacks.append(callback)
 
     def _notify_change(self) -> None:
@@ -70,7 +74,11 @@ class CircuitViewModel:
     # === Palette Selection ===
 
     def select_palette_item(self, item: ObjectType) -> None:
-        """Select an item from the palette."""
+        """Select an item from the palette.
+
+        Args:
+            item: The object type to select for placement.
+        """
         self.selected_palette_item = item
         ui.notify(f"Selected: {item}. Click on canvas to place.")
 
@@ -81,7 +89,11 @@ class CircuitViewModel:
     # === Component Placement ===
 
     def place_component(self, pos: Point) -> None:
-        """Place the selected component at the given position."""
+        """Place the selected component at the given position.
+
+        Args:
+            pos: Canvas position where the component should be placed.
+        """
         if not self.selected_palette_item:
             return
 
@@ -95,7 +107,11 @@ class CircuitViewModel:
     # === Wire Operations (delegated to WireManager) ===
 
     def start_wire(self, pos: Point) -> None:
-        """Start drawing a new wire or add a segment."""
+        """Start drawing a new wire or add a segment.
+
+        Args:
+            pos: Canvas position for the wire point.
+        """
         if not self._wire_manager.is_drawing:
             self._save_state()
         wire_completed = self._wire_manager.start_wire(pos)
@@ -103,7 +119,11 @@ class CircuitViewModel:
             self.selected_palette_item = None
 
     def update_wire_end(self, pos: Point) -> None:
-        """Update the preview end position of a wire being drawn."""
+        """Update the preview end position of a wire being drawn.
+
+        Args:
+            pos: Current mouse position for wire preview.
+        """
         self._wire_manager.update_wire_preview(pos)
 
     def cancel_wire(self) -> None:
@@ -114,7 +134,14 @@ class CircuitViewModel:
     # === Component Dragging ===
 
     def check_component_drag(self, pos: Point) -> bool:
-        """Check if a component should be dragged. Returns True if drag started."""
+        """Check if a component should be dragged.
+
+        Args:
+            pos: Mouse position to check for draggable objects.
+
+        Returns:
+            True if drag started, False otherwise.
+        """
         # First check wire corners (they should be on top visually)
         if self._wire_manager.check_corner_hit(pos):
             self._save_state()
@@ -133,7 +160,11 @@ class CircuitViewModel:
         return False
 
     def update_component_position(self, pos: Point) -> None:
-        """Update a component's position during drag."""
+        """Update a component's position during drag.
+
+        Args:
+            pos: New mouse position for the dragged component.
+        """
         # Handle wire corner dragging
         if self._wire_manager.is_dragging_corner:
             self._wire_manager.update_corner_position(pos)
@@ -162,7 +193,14 @@ class CircuitViewModel:
     # === Object Detection ===
 
     def get_object_at(self, pos: Point) -> tuple[str, UUID, CircuitObject] | None:
-        """Get the object at a position. Returns (type, id, object) or None."""
+        """Get the object at a position.
+
+        Args:
+            pos: Canvas position to check.
+
+        Returns:
+            Tuple of (type_name, id, object) or None if no object found.
+        """
         # Check wire corners first
         for wire in self.circuit.wires:
             for i, point in enumerate(wire.path):
@@ -185,7 +223,16 @@ class CircuitViewModel:
         return None
 
     def _point_near_wire(self, pos: Point, wire: Wire, threshold: float = 10) -> bool:
-        """Check if point is near any segment of a wire."""
+        """Check if point is near any segment of a wire.
+
+        Args:
+            pos: Point to check.
+            wire: Wire to check against.
+            threshold: Maximum distance in pixels to consider "near".
+
+        Returns:
+            True if point is within threshold distance of any wire segment.
+        """
         for i in range(len(wire.path) - 1):
             p1 = wire.path[i]
             p2 = wire.path[i + 1]
@@ -197,7 +244,16 @@ class CircuitViewModel:
     def _point_to_segment_distance(
         self, pos: Point, p1: ConnectorPoint, p2: ConnectorPoint
     ) -> float:
-        """Calculate distance from point to line segment."""
+        """Calculate distance from point to line segment.
+
+        Args:
+            pos: Point to measure from.
+            p1: Start point of the line segment.
+            p2: End point of the line segment.
+
+        Returns:
+            Distance from pos to the nearest point on the segment.
+        """
         # Vector from p1 to p2
         dx = p2.x - p1.x
         dy = p2.y - p1.y
@@ -217,7 +273,12 @@ class CircuitViewModel:
     # === Delete Operations ===
 
     def delete_object(self, obj_type: str, obj_id: UUID) -> None:
-        """Delete an object by type and ID."""
+        """Delete an object by type and ID.
+
+        Args:
+            obj_type: The type name of the object.
+            obj_id: The unique identifier of the object to delete.
+        """
         self._save_state()
 
         # Try to find and delete from components
@@ -255,7 +316,13 @@ class CircuitViewModel:
     # === Rotation Operations ===
 
     def rotate_object(self, obj_type: str, obj_id: UUID, degrees: float) -> None:
-        """Rotate an object by the specified degrees."""
+        """Rotate an object by the specified degrees.
+
+        Args:
+            obj_type: The type name of the object.
+            obj_id: The unique identifier of the object to rotate.
+            degrees: Rotation angle in degrees (positive = clockwise).
+        """
         self._save_state()
 
         # Find and rotate the component
@@ -283,13 +350,21 @@ class CircuitViewModel:
         ui.notify("Circuit cleared!")
 
     def save_circuit(self) -> str:
-        """Save the circuit and return JSON data."""
+        """Save the circuit and return JSON data.
+
+        Returns:
+            JSON string representation of the circuit.
+        """
         json_data = self.circuit.model_dump_json(indent=2)
         ui.notify("Circuit saved!")
         return json_data
 
     def load_circuit(self, json_data: str) -> None:
-        """Load a circuit from JSON data."""
+        """Load a circuit from JSON data.
+
+        Args:
+            json_data: JSON string representing a circuit.
+        """
         self._save_state()
         self.circuit = Circuit.model_validate_json(json_data)
         self._wire_manager.circuit = self.circuit
@@ -307,7 +382,11 @@ class CircuitViewModel:
         self.redo_stack.clear()
 
     def undo(self) -> bool:
-        """Undo the last action. Returns True if successful."""
+        """Undo the last action.
+
+        Returns:
+            True if undo was successful, False if nothing to undo.
+        """
         if not self.undo_stack:
             ui.notify("Nothing to undo", type="warning")
             return False
@@ -323,7 +402,11 @@ class CircuitViewModel:
         return True
 
     def redo(self) -> bool:
-        """Redo the last undone action. Returns True if successful."""
+        """Redo the last undone action.
+
+        Returns:
+            True if redo was successful, False if nothing to redo.
+        """
         if not self.redo_stack:
             ui.notify("Nothing to redo", type="warning")
             return False

@@ -60,7 +60,15 @@ class WireManager:
     # === Wire Drawing ===
 
     def _snap_to_orthogonal(self, pos: Point, reference: Point) -> Point:
-        """Snap position to be orthogonal (horizontal or vertical) from reference."""
+        """Snap position to be orthogonal (horizontal or vertical) from reference.
+
+        Args:
+            pos: Target position to snap.
+            reference: Reference point to align with.
+
+        Returns:
+            New point snapped to horizontal or vertical alignment.
+        """
         dx = abs(pos.x - reference.x)
         dy = abs(pos.y - reference.y)
 
@@ -170,7 +178,11 @@ class WireManager:
         self._on_change()
 
     def update_wire_preview(self, pos: Point) -> None:
-        """Update the preview end position of a wire being drawn."""
+        """Update the preview end position of a wire being drawn.
+
+        Args:
+            pos: Current mouse position for wire preview.
+        """
         if not self.dragging_wire or not self.dragging_wire.path:
             return
 
@@ -200,7 +212,11 @@ class WireManager:
     def check_corner_hit(self, pos: Point) -> bool:
         """Check if position hits a draggable wire corner.
 
-        Returns True and starts dragging if a corner was hit.
+        Args:
+            pos: Position to check for corner hit.
+
+        Returns:
+            True if a corner was hit and dragging started, False otherwise.
         """
         for wire in self._circuit.wires:
             for i, point in enumerate(wire.path):
@@ -214,7 +230,11 @@ class WireManager:
         return False
 
     def update_corner_position(self, pos: Point) -> None:
-        """Update position of a wire corner being dragged."""
+        """Update position of a wire corner being dragged.
+
+        Args:
+            pos: New position for the corner point.
+        """
         if not self.dragging_wire_corner:
             return
 
@@ -226,7 +246,13 @@ class WireManager:
                 return
 
     def _drag_corner(self, wire: Wire, corner_idx: int, pos: Point) -> None:
-        """Handle dragging a specific wire corner with orthogonal constraints."""
+        """Handle dragging a specific wire corner with orthogonal constraints.
+
+        Args:
+            wire: Wire being modified.
+            corner_idx: Index of the corner point in the wire path.
+            pos: New position for the corner.
+        """
         if not (0 < corner_idx < len(wire.path) - 1):
             return
 
@@ -290,21 +316,40 @@ class WireManager:
     # === Orthogonal Segment Helpers ===
 
     def _get_first_segment_horizontal(self, wire: Wire) -> bool:
-        """Determine if the first segment of a wire is horizontal."""
+        """Determine if the first segment of a wire is horizontal.
+
+        Args:
+            wire: Wire to check.
+
+        Returns:
+            True if the first segment is horizontal, False if vertical.
+        """
         if len(wire.path) < 2:
             return True
         p0, p1 = wire.path[0], wire.path[1]
         return abs(p1.x - p0.x) >= abs(p1.y - p0.y)
 
     def _is_segment_horizontal(self, wire: Wire, seg_idx: int) -> bool:
-        """Check if segment at given index should be horizontal."""
+        """Check if segment at given index should be horizontal.
+
+        Args:
+            wire: Wire to check.
+            seg_idx: Index of the segment.
+
+        Returns:
+            True if the segment should be horizontal.
+        """
         first_horiz = self._get_first_segment_horizontal(wire)
         return (seg_idx % 2 == 0) == first_horiz
 
     # === Component Connection Updates ===
 
     def update_connected_wires(self, component: CircuitObject) -> None:
-        """Update wires connected to a component, maintaining orthogonal segments."""
+        """Update wires connected to a component, maintaining orthogonal segments.
+
+        Args:
+            component: Component whose connected wires need updating.
+        """
         conn_points: list[ConnectionPoint] = component.connection_points
 
         for conn_point in conn_points:
@@ -315,7 +360,12 @@ class WireManager:
                     self._update_wire_end(wire, conn_point)
 
     def _update_wire_start(self, wire: Wire, conn_point: ConnectionPoint) -> None:
-        """Update wire when its start connection point moves."""
+        """Update wire when its start connection point moves.
+
+        Args:
+            wire: Wire to update.
+            conn_point: Connection point that has moved.
+        """
         wire.start.position = Point(x=conn_point.position.x, y=conn_point.position.y)
         if not wire.path:
             return
@@ -346,7 +396,12 @@ class WireManager:
                     second_point.x = wire.path[0].x
 
     def _update_wire_end(self, wire: Wire, conn_point: ConnectionPoint) -> None:
-        """Update wire when its end connection point moves."""
+        """Update wire when its end connection point moves.
+
+        Args:
+            wire: Wire to update.
+            conn_point: Connection point that has moved.
+        """
         wire.end.position = Point(x=conn_point.position.x, y=conn_point.position.y)
         if not wire.path:
             return

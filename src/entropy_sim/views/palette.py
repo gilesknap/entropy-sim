@@ -15,7 +15,13 @@ class PaletteView:
     def __init__(
         self, viewmodel: CircuitViewModel, renderer: SVGRenderer, width: int = 150
     ) -> None:
-        """Initialize the palette view."""
+        """Initialize the palette view.
+
+        Args:
+            viewmodel: The circuit view model to control.
+            renderer: SVG renderer for component icons.
+            width: Width of the palette panel in pixels.
+        """
         self.viewmodel = viewmodel
         self.renderer = renderer
         self.width = width
@@ -96,7 +102,11 @@ class PaletteView:
             )
 
     def _on_item_click(self, item: ObjectType) -> None:
-        """Handle palette item click."""
+        """Handle palette item click.
+
+        Args:
+            item: The object type that was clicked.
+        """
         self.viewmodel.select_palette_item(item)
         if self.selection_label:
             self.selection_label.set_text(item.capitalize())
@@ -110,7 +120,11 @@ class PaletteView:
         self.viewmodel.redo()
 
     def _handle_keyboard(self, e: KeyEventArguments) -> None:
-        """Handle keyboard shortcuts."""
+        """Handle keyboard shortcuts.
+
+        Args:
+            e: Keyboard event with key and modifier information.
+        """
         if e.action.keydown:
             if e.key == "z" and e.modifiers.ctrl and e.modifiers.shift:
                 self.viewmodel.redo()
@@ -122,6 +136,10 @@ class PaletteView:
                     self.selection_label.set_text("None")
 
     def update_selection_label(self, text: str) -> None:
-        """Update the selection label text."""
+        """Update the selection label text.
+
+        Args:
+            text: New text for the selection label.
+        """
         if self.selection_label:
             self.selection_label.set_text(text)

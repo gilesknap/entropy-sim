@@ -44,7 +44,14 @@ class SVGRenderer:
         )
 
     def calculate_canvas_size(self, circuit: Circuit) -> tuple[int, int]:
-        """Calculate canvas size based on content and defaults."""
+        """Calculate canvas size based on content and defaults.
+
+        Args:
+            circuit: Circuit to calculate size for.
+
+        Returns:
+            Tuple of (width, height) in pixels.
+        """
         min_x, min_y, max_x, max_y = circuit.get_bounds()
 
         # Start with default size
@@ -59,7 +66,14 @@ class SVGRenderer:
         return (width, height)
 
     def render_circuit(self, circuit: Circuit) -> str:
-        """Generate the complete SVG for the circuit."""
+        """Generate the complete SVG for the circuit.
+
+        Args:
+            circuit: Circuit to render.
+
+        Returns:
+            SVG string representation of the circuit.
+        """
         self.width, self.height = self.calculate_canvas_size(circuit)
 
         # SVG uses fixed dimensions for coordinate system
@@ -95,7 +109,14 @@ class SVGRenderer:
         """
 
     def _render_batteries(self, circuit: Circuit) -> str:
-        """Generate SVG for all batteries."""
+        """Generate SVG for all batteries.
+
+        Args:
+            circuit: Circuit containing batteries to render.
+
+        Returns:
+            SVG string for all batteries.
+        """
         from ..models import Battery
 
         svg = ""
@@ -107,7 +128,14 @@ class SVGRenderer:
         return svg
 
     def _render_liion_cells(self, circuit: Circuit) -> str:
-        """Generate SVG for all Li-Ion cells."""
+        """Generate SVG for all Li-Ion cells.
+
+        Args:
+            circuit: Circuit containing Li-Ion cells to render.
+
+        Returns:
+            SVG string for all Li-Ion cells.
+        """
         from ..models import LiIonCell
 
         svg = ""
@@ -119,7 +147,14 @@ class SVGRenderer:
         return svg
 
     def _render_leds(self, circuit: Circuit) -> str:
-        """Generate SVG for all LEDs."""
+        """Generate SVG for all LEDs.
+
+        Args:
+            circuit: Circuit containing LEDs to render.
+
+        Returns:
+            SVG string for all LEDs.
+        """
         from ..models import LED
 
         svg = ""
@@ -135,7 +170,14 @@ class SVGRenderer:
         return svg
 
     def _render_wires(self, circuit: Circuit) -> str:
-        """Generate SVG for all wires."""
+        """Generate SVG for all wires.
+
+        Args:
+            circuit: Circuit containing wires to render.
+
+        Returns:
+            SVG string for all wires including corner handles.
+        """
         svg = ""
         for wire in circuit.wires:
             if wire.path:
@@ -173,7 +215,14 @@ class SVGRenderer:
         return svg
 
     def _render_connection_points(self, circuit: Circuit) -> str:
-        """Generate SVG for connection points."""
+        """Generate SVG for connection points.
+
+        Args:
+            circuit: Circuit containing connection points to render.
+
+        Returns:
+            SVG string for all connection points and wire anchors.
+        """
         svg = ""
         for _obj_id, conn_point, _obj in circuit.get_all_connection_points():
             # Determine color based on polarity
@@ -243,7 +292,17 @@ class SVGRenderer:
     def get_battery_svg(
         self, x: float, y: float, rotation: float = 0.0, mini: bool = False
     ) -> str:
-        """Generate SVG for a battery (Fritzing-style 9V battery)."""
+        """Generate SVG for a battery (Fritzing-style 9V battery).
+
+        Args:
+            x: X position on canvas.
+            y: Y position on canvas.
+            rotation: Rotation angle in degrees.
+            mini: If True, return miniature version for palette.
+
+        Returns:
+            SVG string for the battery.
+        """
         if mini:
             return self.battery_mini_template
         return f"""
@@ -255,7 +314,17 @@ class SVGRenderer:
     def get_liion_cell_svg(
         self, x: float, y: float, rotation: float = 0.0, mini: bool = False
     ) -> str:
-        """Generate SVG for a Li-Ion cell (cylindrical battery)."""
+        """Generate SVG for a Li-Ion cell (cylindrical battery).
+
+        Args:
+            x: X position on canvas.
+            y: Y position on canvas.
+            rotation: Rotation angle in degrees.
+            mini: If True, return miniature version for palette.
+
+        Returns:
+            SVG string for the Li-Ion cell.
+        """
         if mini:
             return self.liion_cell_mini_template
         return f"""
@@ -273,7 +342,19 @@ class SVGRenderer:
         rotation: float = 0.0,
         mini: bool = False,
     ) -> str:
-        """Generate SVG for an LED (Fritzing-style realistic LED)."""
+        """Generate SVG for an LED (Fritzing-style realistic LED).
+
+        Args:
+            x: X position on canvas.
+            y: Y position on canvas.
+            color: LED color (red, green, blue, yellow).
+            is_on: If True, render LED as illuminated.
+            rotation: Rotation angle in degrees.
+            mini: If True, return miniature version for palette.
+
+        Returns:
+            SVG string for the LED.
+        """
         led_color = self._get_led_color(color, is_on)
         led_body_color = led_color if is_on else self._get_led_off_body(color)
         glow = 'filter="url(#ledGlow)"' if is_on else ""
@@ -293,7 +374,11 @@ class SVGRenderer:
         """
 
     def get_wire_palette_svg(self) -> str:
-        """Generate SVG for wire palette item."""
+        """Generate SVG for wire palette item.
+
+        Returns:
+            SVG string for the wire palette icon.
+        """
         return """
         <svg width="80" height="40" viewBox="0 0 80 40">
             <line x1="10" y1="20" x2="70" y2="20" stroke="#333"
@@ -304,7 +389,15 @@ class SVGRenderer:
         """
 
     def _get_led_color(self, color: str, is_on: bool) -> str:
-        """Get the fill color for an LED."""
+        """Get the fill color for an LED.
+
+        Args:
+            color: LED color name.
+            is_on: Whether the LED is illuminated.
+
+        Returns:
+            Hex color string for the LED fill.
+        """
         colors = {
             "red": ("#ff6b6b", "#cc0000"),
             "green": ("#6bff6b", "#00cc00"),
@@ -315,7 +408,14 @@ class SVGRenderer:
         return on_color if is_on else off_color
 
     def _get_led_off_body(self, color: str) -> str:
-        """Get the body/dome color for an LED when off (more translucent)."""
+        """Get the body/dome color for an LED when off (more translucent).
+
+        Args:
+            color: LED color name.
+
+        Returns:
+            Hex color string for the LED body.
+        """
         body_colors = {
             "red": "#ff9999",
             "green": "#99ff99",

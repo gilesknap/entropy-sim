@@ -29,7 +29,11 @@ class BaseConnector(BaseItem):
     end_connected_to: UUID | None = None
 
     def get_bounds(self) -> tuple[float, float, float, float]:
-        """Get bounding box including all path points."""
+        """Get bounding box including all path points.
+
+        Returns:
+            Tuple of (min_x, min_y, max_x, max_y) coordinates.
+        """
         all_x = [self.start.position.x, self.end.position.x] + [p.x for p in self.path]
         all_y = [self.start.position.y, self.end.position.y] + [p.y for p in self.path]
         return (min(all_x), min(all_y), max(all_x), max(all_y))

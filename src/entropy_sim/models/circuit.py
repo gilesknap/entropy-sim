@@ -64,7 +64,11 @@ class Circuit(BaseModel):
         return [*self.components, *self.wires]
 
     def get_bounds(self) -> tuple[float, float, float, float]:
-        """Get bounding box of all components (min_x, min_y, max_x, max_y)."""
+        """Get bounding box of all components.
+
+        Returns:
+            Tuple of (min_x, min_y, max_x, max_y) coordinates.
+        """
         if not self.all_objects:
             return (0, 0, 0, 0)
 
@@ -107,7 +111,11 @@ class Circuit(BaseModel):
         return obj
 
     def add_wire(self) -> Wire:
-        """Add a new wire to the circuit."""
+        """Add a new wire to the circuit.
+
+        Returns:
+            The newly created wire object.
+        """
         wire = Wire()
         self.wires.append(wire)
         return wire
@@ -115,7 +123,11 @@ class Circuit(BaseModel):
     def get_all_connection_points(
         self,
     ) -> list[tuple[UUID, ConnectionPoint, Component]]:
-        """Get all connection points in the circuit with their parent objects."""
+        """Get all connection points in the circuit with their parent objects.
+
+        Returns:
+            List of tuples containing (object_id, connection_point, component).
+        """
         points: list[tuple[UUID, ConnectionPoint, Component]] = []
         for component in self.components:
             for conn_point in component.connection_points:
@@ -125,7 +137,15 @@ class Circuit(BaseModel):
     def find_nearest_connection_point(
         self, pos: Point, max_distance: float = 20.0
     ) -> tuple[UUID, ConnectionPoint, Component] | None:
-        """Find the nearest connection point within max_distance."""
+        """Find the nearest connection point within max_distance.
+
+        Args:
+            pos: Position to search from.
+            max_distance: Maximum distance to consider.
+
+        Returns:
+            Tuple of (object_id, connection_point, component) or None.
+        """
         nearest: tuple[UUID, ConnectionPoint, Component] | None = None
         min_dist = max_distance
 
@@ -140,7 +160,14 @@ class Circuit(BaseModel):
         return nearest
 
     def remove_component(self, component_id: UUID) -> bool:
-        """Remove a component by ID."""
+        """Remove a component by ID.
+
+        Args:
+            component_id: UUID of the component to remove.
+
+        Returns:
+            True if component was found and removed, False otherwise.
+        """
         for i, component in enumerate(self.components):
             if component.id == component_id:
                 self.components.pop(i)
